@@ -1,11 +1,17 @@
 use macroquad::{prelude::*, telemetry};
 
+use crate::wrld::World;
+
 pub struct DebugState {
   pub draw_fps: bool,
+  pub mouse: bool,
 }
 impl Default for DebugState {
   fn default() -> Self {
-    DebugState { draw_fps: true }
+    DebugState {
+      draw_fps: true,
+      mouse: true,
+    }
   }
 }
 
@@ -39,7 +45,7 @@ impl Default for DebugPrintSettings {
   }
 }
 
-pub fn draw_debugs(deb_state: &DebugState) {
+pub fn draw_debugs(deb_state: &DebugState, wrld: &World) {
   let mut y = 10f32;
   if deb_state.draw_fps {
     let f = telemetry::frame();
@@ -52,17 +58,21 @@ pub fn draw_debugs(deb_state: &DebugState) {
         1.0 / f.full_frame_time
       ),
     ));
-    // y += 15.0;
+    y += 15.0;
   }
 
-  // if deb_state.draw_p_light {
-  //   let deb = DebugPrintSettings {
-  //     y,
-  //     ..Default::default()
-  //   };
-  //   angle(&wrld.sphaera.pos(), &wrld.p_light, Some(deb));
-  //   y += 15.0;
-  // }
+  if deb_state.mouse {
+    print(DebugPrintSettings::new(
+      10.0,
+      y,
+      format!(
+        "mouse: ({}, {})  grid:{:?}",
+        wrld.mouse_pos.0,
+        wrld.mouse_pos.1,
+        wrld.get_mouse_grid(),
+      ),
+    ));
+  }
 }
 
 pub fn print(s: DebugPrintSettings) {

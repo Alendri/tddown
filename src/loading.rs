@@ -4,8 +4,9 @@ use macroquad::{
 };
 
 use crate::{
+  emath::i_to_xy,
   level::Level,
-  tile::{Tile, TileType},
+  tile::{BaseTile, TileType},
 };
 
 static ASSET_PATH: &str = "assets";
@@ -78,7 +79,7 @@ pub async fn load_levels(textures: Textures) -> Level {
     .unwrap();
 
   println!("w:{}, h:{}", lvl.width, lvl.height);
-
+  let mut i = 0;
   let tiles = lvl
     .get_image_data()
     .iter()
@@ -114,9 +115,17 @@ pub async fn load_levels(textures: Textures) -> Level {
           )
         }
       };
-      Tile {
+
+      let pos = i_to_xy(&(lvl.width as usize), &i);
+      // println!("{}, {:?}", i, pos);
+      i += 1;
+
+      BaseTile {
         kind: t.0,
         texture: t.1,
+        grid_pos: pos,
+        index: &i - 1,
+        size: (1, 1),
       }
     })
     .collect::<Vec<_>>();

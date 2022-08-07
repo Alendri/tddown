@@ -8,6 +8,7 @@ mod deb;
 mod emath;
 mod level;
 mod loading;
+mod rect;
 mod tile;
 mod wrld;
 
@@ -25,7 +26,7 @@ async fn main() {
   let texs = load_textures().await;
   let lvl = load_levels(texs).await;
 
-  let mut wrld = World::new();
+  let mut wrld = World::new(lvl);
   let deb_state = DebugState {
     ..Default::default()
   };
@@ -37,9 +38,8 @@ async fn main() {
     clear_background(BLACK);
 
     wrld.update(&dt);
-    lvl.draw(&wrld);
 
-    draw_debugs(&deb_state);
+    draw_debugs(&deb_state, &wrld);
     next_frame().await
   }
 }
