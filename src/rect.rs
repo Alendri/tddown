@@ -31,11 +31,20 @@ impl Rect {
     }
   }
 
-  pub fn collide(&self, other: &Rect) -> bool {
+  pub fn intersecting(&self, other: &Rect) -> bool {
     let a = self;
     let b = other;
 
     a.left <= b.right && a.right >= b.left && a.top <= b.bottom || a.bottom >= b.top
+  }
+}
+
+impl Collidable for Rect {
+  fn get_rect(&self) -> &Rect {
+    &self
+  }
+  fn collide(&self, other: &impl Collidable) -> bool {
+    self.intersecting(other.get_rect())
   }
 }
 
@@ -52,7 +61,7 @@ mod tests {
   fn collide_same() {
     let a = Rect::new(0, 0, 10, 10);
     let b = a;
-    let result = a.collide(&b);
+    let result = a.intersecting(&b);
     assert_eq!(result, true);
   }
 
@@ -60,7 +69,7 @@ mod tests {
   fn collide_overlap() {
     let a = Rect::new(0, 0, 10, 10);
     let b = Rect::new(5, 5, 15, 15);
-    let result = a.collide(&b);
+    let result = a.intersecting(&b);
     assert_eq!(result, true);
   }
 
@@ -68,14 +77,14 @@ mod tests {
   fn collide_touching_side() {
     let a = Rect::new(0, 0, 10, 10);
     let b = Rect::new(10, 0, 20, 20);
-    let result = a.collide(&b);
+    let result = a.intersecting(&b);
     assert_eq!(result, true);
   }
   #[test]
   fn collide_touching_top() {
     let a = Rect::new(0, 0, 10, 10);
     let b = Rect::new(0, 10, 20, 20);
-    let result = a.collide(&b);
+    let result = a.intersecting(&b);
     assert_eq!(result, true);
   }
 
@@ -83,7 +92,7 @@ mod tests {
   fn collide_not_overlap() {
     let a = Rect::new(0, 0, 10, 10);
     let b = Rect::new(15, 15, 25, 25);
-    let result = a.collide(&b);
+    let result = a.intersecting(&b);
     assert_eq!(result, false);
   }
 }

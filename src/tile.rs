@@ -62,7 +62,7 @@ impl Collidable for Tile {
     &self.rect
   }
   fn collide(&self, other: &impl Collidable) -> bool {
-    self.rect.collide(other.get_rect())
+    !self.passable && self.rect.intersecting(other.get_rect())
   }
 }
 impl Tile {

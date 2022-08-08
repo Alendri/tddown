@@ -11,9 +11,17 @@ where
 pub fn i_to_xy(width: &usize, index: &usize) -> (usize, usize) {
   (index % width, index / width)
 }
-
+pub fn xy_to_i(width: &usize, x: &usize, y: &usize) -> usize {
+  y * width + x
+}
 pub fn grid_pos_to_pos(grid_pos: &(usize, usize)) -> (usize, usize) {
   (grid_pos.0 * 32, grid_pos.1 * 32)
+}
+pub fn pos_to_grid_pos(pos: &(usize, usize)) -> (usize, usize) {
+  (
+    (pos.0 as f32 / 32.0).floor() as usize,
+    (pos.1 as f32 / 32.0).floor() as usize,
+  )
 }
 
 // pub fn map_range_slope<T: Copy>(from_start: T, to_start: T, slope: T, v: T) -> T

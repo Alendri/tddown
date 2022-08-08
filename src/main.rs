@@ -1,5 +1,6 @@
 #![allow(dead_code)]
 use deb::{draw_debugs, DebugState};
+use enemy::Enemy;
 use loading::{load_levels, load_textures};
 use macroquad::prelude::*;
 use wrld::World;
@@ -29,6 +30,7 @@ async fn main() {
   let lvl = load_levels(&texs).await;
 
   let mut wrld = World::new(lvl, texs);
+  let mut enemies: Vec<Enemy> = Vec::new();
   let deb_state = DebugState {
     ..Default::default()
   };
@@ -39,7 +41,7 @@ async fn main() {
     dt = get_frame_time();
     clear_background(BLACK);
 
-    wrld.update(&dt);
+    wrld.update(&dt, &mut enemies);
 
     draw_debugs(&deb_state, &wrld);
     next_frame().await

@@ -4,14 +4,11 @@ use macroquad::prelude::{
 };
 
 use crate::{
-  enemy::Enemy,
-  level::Level,
-  loading::Textures,
-  spawner::{self, spawn},
-  tile::Tile,
+  emath::xy_to_i, enemy::Enemy, level::Level, loading::Textures, spawner::spawn, tile::Tile,
 };
 
-const BASE_MOVEMENT_SPEED: f32 = 300.0;
+static GRAVITY: f32 = 9.87;
+static BASE_MOVEMENT_SPEED: f32 = 300.0;
 
 pub struct World {
   level: Level,
@@ -27,7 +24,8 @@ pub struct World {
   _zoom: f32,
   spawns: Vec<(usize, usize)>,
   pub textures: Textures,
-  enemies: Vec<Enemy>,
+  gravity: f32,
+  pub frame: usize,
 }
 
 impl World {
@@ -48,7 +46,8 @@ impl World {
       tiles,
       level: lvl,
       textures: texs,
-      enemies: Vec::new(),
+      gravity: 0.0,
+      frame: 0,
     }
   }
 
@@ -56,7 +55,9 @@ impl World {
     self.tiles = lvl.tiles.iter().map(|bt| Tile::new(bt)).collect();
     self.level = lvl;
   }
-
+  pub fn get_scaled_gravity(&self) -> f32 {
+    self.gravity
+  }
   pub fn get_mouse_grid(&self) -> Option<(usize, usize)> {
     self.mouse_grid
   }
@@ -78,11 +79,18 @@ impl World {
   pub fn get_spawns(&self) -> &Vec<(usize, usize)> {
     &self.spawns
   }
-  pub fn spawn(&mut self) {
-    self.enemies.push(spawn(&self));
+  pub fn get_tile(&self, x: &usize, y: &usize) -> Option<&Tile> {
+    if x < &self.level.width && y < &self.level.height {
+      return Some(&self.tiles[xy_to_i(&self.level.width, x, y)]);
+    }
+    None
   }
 
-  pub fn update(&mut self, dt: &f32) {
+  pub fn update(&mut self, dt: &f32, enemies: &mut Vec<Enemy>) {
+    self.frame += 1;
+    //UPDATE GRAVITY
+    self.gravity = GRAVITY * (32.0 / 4.0) * dt;
+
     //MOUSE UPDATES
     self.prev_mouse_pos = self.mouse_pos;
     self.mouse_pos = mouse_position();
@@ -109,9 +117,10 @@ impl World {
     }
 
     if is_key_released(KeyCode::Space) {
-      self.spawn();
+      enemies.push(spawn(&self))
     }
 
+    //PANNING
     if is_mouse_button_down(MouseButton::Right) {
       self.scroll_pos.x += mouse_diff.0 / self.zoom;
       self.scroll_pos.y += mouse_diff.1 / self.zoom;
@@ -139,8 +148,14 @@ impl World {
       }
     }
 
+    //DRAW TILES
     for t in &self.tiles {
       t.draw(&self);
+    }
+    //UPDATE and DRAW ENEMIES
+    for i in 0..enemies.len() {
+      enemies[i].update(&self);
+      enemies[i].draw(&self);
     }
   }
 }
