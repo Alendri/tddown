@@ -1,27 +1,39 @@
 use macroquad::prelude::{
-  is_key_down, is_mouse_button_down, mouse_position, mouse_wheel, vec2, KeyCode, MouseButton, Vec2,
+  is_key_down, is_key_released, is_mouse_button_down, mouse_position, mouse_wheel, vec2, KeyCode,
+  MouseButton, Vec2,
 };
 
-use crate::{level::Level, tile::Tile};
+use crate::{
+  enemy::Enemy,
+  level::Level,
+  loading::Textures,
+  spawner::{self, spawn},
+  tile::Tile,
+};
 
 const BASE_MOVEMENT_SPEED: f32 = 300.0;
 
 pub struct World {
+  level: Level,
+  mouse_grid: Option<(usize, usize)>,
+  prev_mouse_pos: (f32, f32),
+  pub grid_size: f32,
+  pub mouse_pos: (f32, f32),
   pub scroll_pos: Vec2,
   _scroll_pos: Vec2,
+  pub sensitivity: f32,
+  pub tiles: Vec<Tile>,
   pub zoom: f32,
   _zoom: f32,
-  pub sensitivity: f32,
-  pub mouse_pos: (f32, f32),
-  prev_mouse_pos: (f32, f32),
-  mouse_grid: Option<(usize, usize)>,
-  pub grid_size: f32,
-  level: Level,
-  pub tiles: Vec<Tile>,
+  spawns: Vec<(usize, usize)>,
+  pub textures: Textures,
+  enemies: Vec<Enemy>,
 }
 
 impl World {
-  pub fn new(lvl: Level) -> World {
+  pub fn new(lvl: Level, texs: Textures) -> World {
+    let tiles: Vec<Tile> = lvl.tiles.iter().map(|bt| Tile::new(bt)).collect();
+
     World {
       scroll_pos: vec2(0.0, 0.0),
       _scroll_pos: vec2(0.0, 0.0),
@@ -32,12 +44,15 @@ impl World {
       prev_mouse_pos: (0.0, 0.0),
       mouse_grid: None,
       grid_size: 32.0,
-      tiles: lvl.tiles.iter().map(|bt| Tile::new(bt)).collect(),
+      spawns: lvl.find_spawns(),
+      tiles,
       level: lvl,
+      textures: texs,
+      enemies: Vec::new(),
     }
   }
 
-  pub fn update_level(&mut self, lvl: Level) {
+  pub fn set_level(&mut self, lvl: Level) {
     self.tiles = lvl.tiles.iter().map(|bt| Tile::new(bt)).collect();
     self.level = lvl;
   }
@@ -60,6 +75,13 @@ impl World {
       ))
     }
   }
+  pub fn get_spawns(&self) -> &Vec<(usize, usize)> {
+    &self.spawns
+  }
+  pub fn spawn(&mut self) {
+    self.enemies.push(spawn(&self));
+  }
+
   pub fn update(&mut self, dt: &f32) {
     //MOUSE UPDATES
     self.prev_mouse_pos = self.mouse_pos;
@@ -84,6 +106,10 @@ impl World {
         self._zoom.round()
       };
       self.grid_size = 32.0 * self.zoom;
+    }
+
+    if is_key_released(KeyCode::Space) {
+      self.spawn();
     }
 
     if is_mouse_button_down(MouseButton::Right) {

@@ -36,6 +36,7 @@ pub struct Textures {
   pub terrain_up: Texture2D,
   pub turret_down: Texture2D,
   pub turret_up: Texture2D,
+  pub enemy: Texture2D,
 }
 
 fn tex_path(name: &str) -> String {
@@ -64,16 +65,18 @@ pub async fn load_textures() -> Textures {
     build_up: load_texture(&tex_path("build_up")).await.unwrap(),
     empty: load_texture(&tex_path("empty")).await.unwrap(),
     goal: load_texture(&tex_path("missing")).await.unwrap(),
-    spawn: load_texture(&tex_path("missing")).await.unwrap(),
+    spawn: load_texture(&tex_path("hole1")).await.unwrap(),
     terrain_center: load_texture(&tex_path("center")).await.unwrap(),
     terrain_down: load_texture(&tex_path("down")).await.unwrap(),
     terrain_up: load_texture(&tex_path("up")).await.unwrap(),
     turret_down: load_texture(&tex_path("missing")).await.unwrap(),
     turret_up: load_texture(&tex_path("missing")).await.unwrap(),
+
+    enemy: load_texture(&tex_path("enemy")).await.unwrap(),
   }
 }
 
-pub async fn load_levels(textures: Textures) -> Level {
+pub async fn load_levels(textures: &Textures) -> Level {
   let lvl = load_image(&format!("{}/levels/level1.png", ASSET_PATH))
     .await
     .unwrap();
@@ -84,49 +87,92 @@ pub async fn load_levels(textures: Textures) -> Level {
     .get_image_data()
     .iter()
     .map(|p| {
-      let t = match p {
-        [0, 0, 0, 255] => (TileType::BorderTopLeft, textures.border_top_left),
-        [30, 30, 30, 255] => (TileType::BorderTop, textures.border_top),
-        [60, 60, 60, 255] => (TileType::BorderTopRight, textures.border_top_right),
-        [90, 90, 90, 255] => (TileType::BorderRight, textures.border_right),
-        [120, 120, 120, 255] => (TileType::BorderBottomRight, textures.border_bottom_right),
-        [150, 150, 150, 255] => (TileType::BorderBottom, textures.border_bottom),
-        [180, 180, 180, 255] => (TileType::BorderBottomLeft, textures.border_bottom_left),
-        [210, 210, 210, 255] => (TileType::BorderLeft, textures.border_left),
-        [213, 0, 0, 255] => (TileType::Spawn, textures.spawn),
-        [113, 0, 0, 255] => (TileType::Goal, textures.goal),
-        [0, 200, 0, 255] => (TileType::TerrainUp, textures.terrain_up),
-        [0, 155, 0, 255] => (TileType::TerrainCenter, textures.terrain_center),
-        [0, 109, 0, 255] => (TileType::TerrainDown, textures.terrain_down),
-        [0, 0, 200, 255] => (TileType::BuildUp, textures.build_up),
-        [0, 0, 109, 255] => (TileType::BuildDown, textures.build_down),
+      let pos = i_to_xy(&(lvl.width as usize), &i);
+      let mut basetile = BaseTile {
+        kind: TileType::Empty,
+        texture: textures.empty,
+        grid_pos: pos,
+        index: i,
+        size: (1, 1),
+      };
+      match p {
+        [0, 0, 0, 255] => {
+          basetile.kind = TileType::BorderTopLeft;
+          basetile.texture = textures.border_top_left;
+        }
+        [30, 30, 30, 255] => {
+          basetile.kind = TileType::BorderTop;
+          basetile.texture = textures.border_top;
+        }
+        [60, 60, 60, 255] => {
+          basetile.kind = TileType::BorderTopRight;
+          basetile.texture = textures.border_top_right;
+        }
+        [90, 90, 90, 255] => {
+          basetile.kind = TileType::BorderRight;
+          basetile.texture = textures.border_right;
+        }
+        [120, 120, 120, 255] => {
+          basetile.kind = TileType::BorderBottomRight;
+          basetile.texture = textures.border_bottom_right;
+        }
+        [150, 150, 150, 255] => {
+          basetile.kind = TileType::BorderBottom;
+          basetile.texture = textures.border_bottom;
+        }
+        [180, 180, 180, 255] => {
+          basetile.kind = TileType::BorderBottomLeft;
+          basetile.texture = textures.border_bottom_left;
+        }
+        [210, 210, 210, 255] => {
+          basetile.kind = TileType::BorderLeft;
+          basetile.texture = textures.border_left;
+        }
+        [213, 0, 0, 255] => {
+          basetile.kind = TileType::Spawn;
+          basetile.texture = textures.spawn;
+        }
+        [113, 0, 0, 255] => {
+          basetile.kind = TileType::Goal;
+          basetile.texture = textures.goal;
+        }
+        [0, 200, 0, 255] => {
+          basetile.kind = TileType::TerrainUp;
+          basetile.texture = textures.terrain_up;
+        }
+        [0, 155, 0, 255] => {
+          basetile.kind = TileType::TerrainCenter;
+          basetile.texture = textures.terrain_center;
+        }
+        [0, 109, 0, 255] => {
+          basetile.kind = TileType::TerrainDown;
+          basetile.texture = textures.terrain_down;
+        }
+        [0, 0, 200, 255] => {
+          basetile.kind = TileType::BuildUp;
+          basetile.texture = textures.build_up;
+        }
+        [0, 0, 109, 255] => {
+          basetile.kind = TileType::BuildDown;
+          basetile.texture = textures.build_down;
+        }
         _ => {
           let r = RandomRange::gen_range(0, 7);
-          (
-            TileType::Empty,
-            match r {
-              1 => textures.bg_1,
-              2 => textures.bg_1,
-              3 => textures.bg_2,
-              4 => textures.bg_2,
-              5 => textures.bg_3,
-              _ => textures.bg_0,
-            },
-          )
+          basetile.kind = TileType::Empty;
+          basetile.texture = match r {
+            1 => textures.bg_1,
+            2 => textures.bg_1,
+            3 => textures.bg_2,
+            4 => textures.bg_2,
+            5 => textures.bg_3,
+            _ => textures.bg_0,
+          };
         }
       };
 
-      let pos = i_to_xy(&(lvl.width as usize), &i);
-      // println!("{}, {:?}", i, pos);
       i += 1;
 
-      BaseTile {
-        kind: t.0,
-        texture: t.1,
-        grid_pos: pos,
-        index: &i - 1,
-        size: (1, 1),
-      }
+      basetile
     })
     .collect::<Vec<_>>();
 

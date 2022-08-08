@@ -6,9 +6,11 @@ use wrld::World;
 
 mod deb;
 mod emath;
+mod enemy;
 mod level;
 mod loading;
 mod rect;
+mod spawner;
 mod tile;
 mod wrld;
 
@@ -24,9 +26,9 @@ fn window_conf() -> Conf {
 #[macroquad::main(window_conf)]
 async fn main() {
   let texs = load_textures().await;
-  let lvl = load_levels(texs).await;
+  let lvl = load_levels(&texs).await;
 
-  let mut wrld = World::new(lvl);
+  let mut wrld = World::new(lvl, texs);
   let deb_state = DebugState {
     ..Default::default()
   };

@@ -39,6 +39,11 @@ impl Rect {
   }
 }
 
+pub trait Collidable {
+  fn get_rect(&self) -> &Rect;
+  fn collide(&self, other: &impl Collidable) -> bool;
+}
+
 #[cfg(test)]
 mod tests {
   use super::*;
@@ -60,9 +65,16 @@ mod tests {
   }
 
   #[test]
-  fn collide_touching() {
+  fn collide_touching_side() {
     let a = Rect::new(0, 0, 10, 10);
     let b = Rect::new(10, 0, 20, 20);
+    let result = a.collide(&b);
+    assert_eq!(result, true);
+  }
+  #[test]
+  fn collide_touching_top() {
+    let a = Rect::new(0, 0, 10, 10);
+    let b = Rect::new(0, 10, 20, 20);
     let result = a.collide(&b);
     assert_eq!(result, true);
   }

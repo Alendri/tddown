@@ -3,7 +3,11 @@ use macroquad::{
   texture::{draw_texture_ex, DrawTextureParams, Texture2D},
 };
 
-use crate::{rect::Rect, wrld::World};
+use crate::{
+  emath::grid_pos_to_pos,
+  rect::{Collidable, Rect},
+  wrld::World,
+};
 
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub enum TileType {
@@ -51,6 +55,15 @@ impl BaseTile {
 pub struct Tile {
   base: BaseTile,
   rect: Rect,
+  passable: bool,
+}
+impl Collidable for Tile {
+  fn get_rect(&self) -> &Rect {
+    &self.rect
+  }
+  fn collide(&self, other: &impl Collidable) -> bool {
+    self.rect.collide(other.get_rect())
+  }
 }
 impl Tile {
   pub fn new(base: &BaseTile) -> Tile {
@@ -61,7 +74,17 @@ impl Tile {
     Tile {
       base: BaseTile::from_other(base),
       rect: Rect::new(left, top, right, bottom),
+      passable: base.kind == TileType::Empty,
     }
+  }
+  pub fn kind(&self) -> &TileType {
+    &self.base.kind
+  }
+  pub fn pos(&self) -> (usize, usize) {
+    grid_pos_to_pos(&self.base.grid_pos)
+  }
+  pub fn grid_pos(&self) -> (usize, usize) {
+    self.base.grid_pos
   }
 
   pub fn draw(&self, wrld: &World) {
