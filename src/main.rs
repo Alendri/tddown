@@ -13,6 +13,8 @@ mod loading;
 mod rect;
 mod spawner;
 mod tile;
+mod tower;
+mod ui;
 mod wrld;
 
 fn window_conf() -> Conf {
@@ -42,6 +44,8 @@ async fn main() {
     clear_background(BLACK);
 
     wrld.update(&dt, &mut enemies);
+
+    ui::draw(&wrld);
 
     draw_debugs(&deb_state, &wrld);
     next_frame().await

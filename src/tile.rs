@@ -92,6 +92,7 @@ impl Tile {
       self.base.texture,
       ((self.base.grid_pos.0 * 32) as f32 + wrld.scroll_pos.x) * wrld.zoom,
       ((self.base.grid_pos.1 * 32) as f32 + wrld.scroll_pos.y) * wrld.zoom,
+      // Color::from_rgba(20, 20, 20, 255),
       WHITE,
       DrawTextureParams {
         dest_size: Some(vec2(

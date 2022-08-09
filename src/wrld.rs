@@ -5,10 +5,11 @@ use macroquad::prelude::{
 
 use crate::{
   emath::xy_to_i, enemy::Enemy, level::Level, loading::Textures, spawner::spawn, tile::Tile,
+  ui::UI_WIDTH,
 };
 
-static GRAVITY: f32 = 9.87;
-static BASE_MOVEMENT_SPEED: f32 = 300.0;
+const GRAVITY: f32 = 9.87;
+const BASE_MOVEMENT_SPEED: f32 = 300.0;
 
 pub struct World {
   level: Level,
@@ -26,6 +27,7 @@ pub struct World {
   pub textures: Textures,
   gravity: f32,
   pub frame: usize,
+  pub health: usize,
 }
 
 impl World {
@@ -33,8 +35,8 @@ impl World {
     let tiles: Vec<Tile> = lvl.tiles.iter().map(|bt| Tile::new(bt)).collect();
 
     World {
-      scroll_pos: vec2(0.0, 0.0),
-      _scroll_pos: vec2(0.0, 0.0),
+      scroll_pos: vec2(UI_WIDTH + 32.0, 0.0),
+      _scroll_pos: vec2(UI_WIDTH + 32.0, 0.0),
       zoom: 1.0,
       _zoom: 1.0,
       sensitivity: 0.005,
@@ -48,6 +50,7 @@ impl World {
       textures: texs,
       gravity: 0.0,
       frame: 0,
+      health: 100,
     }
   }
 
@@ -152,10 +155,8 @@ impl World {
     for t in &self.tiles {
       t.draw(&self);
     }
-    //UPDATE and DRAW ENEMIES
-    for i in 0..enemies.len() {
-      enemies[i].update(&self);
-      enemies[i].draw(&self);
-    }
+
+    //UPDATE ENEMIES
+    enemies.retain_mut(|e| e.update(self));
   }
 }

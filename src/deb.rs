@@ -5,12 +5,14 @@ use crate::wrld::World;
 pub struct DebugState {
   pub draw_fps: bool,
   pub mouse: bool,
+  pub stats: bool,
 }
 impl Default for DebugState {
   fn default() -> Self {
     DebugState {
       draw_fps: true,
       mouse: true,
+      stats: true,
     }
   }
 }
@@ -71,6 +73,15 @@ pub fn draw_debugs(deb_state: &DebugState, wrld: &World) {
         wrld.mouse_pos.1,
         wrld.get_mouse_grid(),
       ),
+    ));
+    y += 15.0;
+  }
+
+  if deb_state.stats {
+    print(DebugPrintSettings::new(
+      10.0,
+      y,
+      format!("hp:{}", wrld.health),
     ));
   }
 }

@@ -29,18 +29,24 @@ pub struct Textures {
   pub build_down: Texture2D,
   pub build_up: Texture2D,
   pub empty: Texture2D,
+  pub enemy: Texture2D,
   pub goal: Texture2D,
+  pub tower_lava: Vec<Texture2D>,
+  pub lava_drop: Texture2D,
+  pub lava_splash: Vec<Texture2D>,
   pub spawn: Texture2D,
   pub terrain_center: Texture2D,
   pub terrain_down: Texture2D,
   pub terrain_up: Texture2D,
   pub turret_down: Texture2D,
   pub turret_up: Texture2D,
-  pub enemy: Texture2D,
 }
 
 fn tex_path(name: &str) -> String {
   format!("{}/{}.png", TEXTURE_PATH, name)
+}
+fn tower_path(name: &str) -> String {
+  format!("{}/towers/{}.png", TEXTURE_PATH, name)
 }
 
 pub async fn load_textures() -> Textures {
@@ -49,8 +55,6 @@ pub async fn load_textures() -> Textures {
     bg_1: load_texture(&tex_path("bg_1")).await.unwrap(),
     bg_2: load_texture(&tex_path("bg_2")).await.unwrap(),
     bg_3: load_texture(&tex_path("bg_3")).await.unwrap(),
-    blocker_down: load_texture(&tex_path("missing")).await.unwrap(),
-    blocker_up: load_texture(&tex_path("missing")).await.unwrap(),
     border_bottom_left: load_texture(&tex_path("border_bottom_left")).await.unwrap(),
     border_bottom_right: load_texture(&tex_path("border_bottom_right"))
       .await
@@ -64,7 +68,7 @@ pub async fn load_textures() -> Textures {
     build_down: load_texture(&tex_path("build_down")).await.unwrap(),
     build_up: load_texture(&tex_path("build_up")).await.unwrap(),
     empty: load_texture(&tex_path("empty")).await.unwrap(),
-    goal: load_texture(&tex_path("missing")).await.unwrap(),
+    goal: load_texture(&tex_path("goal")).await.unwrap(),
     spawn: load_texture(&tex_path("hole1")).await.unwrap(),
     terrain_center: load_texture(&tex_path("center")).await.unwrap(),
     terrain_down: load_texture(&tex_path("down")).await.unwrap(),
@@ -72,6 +76,24 @@ pub async fn load_textures() -> Textures {
     turret_down: load_texture(&tex_path("missing")).await.unwrap(),
     turret_up: load_texture(&tex_path("missing")).await.unwrap(),
 
+    //BUILDABLE
+    blocker_down: load_texture(&tower_path("blocker_down")).await.unwrap(),
+    blocker_up: load_texture(&tower_path("blocker_up")).await.unwrap(),
+    tower_lava: vec![
+      load_texture(&tower_path("lava_0")).await.unwrap(),
+      load_texture(&tower_path("lava_1")).await.unwrap(),
+    ],
+
+    //Effects
+    lava_drop: load_texture(&tower_path("lava_drop1_5")).await.unwrap(),
+    lava_splash: vec![
+      load_texture(&tower_path("lava_drop1_6")).await.unwrap(),
+      load_texture(&tower_path("lava_drop1_7")).await.unwrap(),
+      load_texture(&tower_path("lava_drop1_8")).await.unwrap(),
+      load_texture(&tower_path("lava_drop1_9")).await.unwrap(),
+    ],
+
+    //Enemies
     enemy: load_texture(&tex_path("enemy")).await.unwrap(),
   }
 }
@@ -81,7 +103,7 @@ pub async fn load_levels(textures: &Textures) -> Level {
     .await
     .unwrap();
 
-  println!("w:{}, h:{}", lvl.width, lvl.height);
+  println!("level w:{}, h:{}", lvl.width, lvl.height);
   let mut i = 0;
   let tiles = lvl
     .get_image_data()

@@ -7,8 +7,17 @@ use macroquad::{
 use crate::{
   emath::pos_to_grid_pos,
   rect::{Collidable, Rect},
+  tile::TileType,
   wrld::World,
 };
+
+#[derive(Debug, PartialEq, Clone, Copy)]
+pub enum Facing {
+  Left,
+  Right,
+}
+
+const WALKING_SPEED: f32 = 8.0;
 
 pub struct Enemy {
   //Fractional position.
@@ -18,6 +27,7 @@ pub struct Enemy {
   pub grid_pos: (usize, usize),
   texture: Texture2D,
   size: (usize, usize),
+  facing: Facing,
   rotation: f32,
   rect: Rect,
 }
@@ -31,6 +41,7 @@ impl Enemy {
       texture,
       size,
       rotation: 0.0,
+      facing: Facing::Left,
       rect: Rect::new(pos.0, pos.1, pos.0 + size.0, pos.1 + size.1),
     }
   }
@@ -42,14 +53,17 @@ impl Enemy {
       self.pos.1 + self.size.1,
     );
   }
-  pub fn update(&mut self, wrld: &World) {
-    self._pos.x += 0.0 * 4.0 * get_frame_time();
 
+  /** Returns (falling, keep) */
+  fn move_y(&mut self, wrld: &mut World) -> (bool, bool) {
+    //Update position and check for collisions.
     self._pos.y += wrld.get_scaled_gravity();
     let ydiff = self._pos.y - self.pos.1 as f32;
+    let mut falling = true;
+    let mut keep = true;
     if ydiff > 1.0 {
-      //Update position and check for collisions.
       let mut y: usize = 0;
+
       while y <= ydiff as usize {
         let rect = Rect::new(
           self.pos.0,
@@ -63,8 +77,14 @@ impl Enemy {
           //   println!("{:?}, {:?}", tile_below.kind(), tile_below.grid_pos());
           // }
           if tile_below.collide(&rect) {
-            //We have collided with a solid tile.
+            //We have collided.
+            if tile_below.kind() == &TileType::Goal {
+              wrld.health -= 1;
+              keep = false;
+              break;
+            }
             self._pos.y = self.pos.1 as f32;
+            falling = false;
             break;
           }
         }
@@ -73,7 +93,71 @@ impl Enemy {
         y += 1;
       }
     }
+    (falling, keep)
   }
+  /** Returns keep */
+  fn move_x(&mut self, wrld: &mut World) -> bool {
+    let mut keep = true;
+    let xdir: isize = if self.facing == Facing::Left { -1 } else { 1 };
+    self._pos.x += xdir as f32 * WALKING_SPEED * 4.0 * get_frame_time();
+    let xdiff = (self._pos.x - self.pos.0 as f32).abs();
+    if xdiff > 1.0 {
+      //Update position and check for collisions.
+      let mut x: usize = 0;
+      while x <= xdiff as usize {
+        let rect = Rect::new(
+          self.pos.0 + 1,
+          self.pos.1,
+          self.pos.0 + 1 + self.size.0,
+          self.pos.1 + self.size.1,
+        );
+
+        if let Some(next_tile) = wrld.get_tile(
+          &((self.grid_pos.0 as isize + xdir) as usize),
+          &self.grid_pos.1,
+        ) {
+          // if wrld.frame % 60 == 0 {
+          //   println!("{:?}, {:?}", next_tile.kind(), next_tile.grid_pos());
+          // }
+          if next_tile.collide(&rect) {
+            //We have collided with a tile.
+            if next_tile.kind() == &TileType::Goal {
+              wrld.health -= 1;
+              keep = false;
+              break;
+            }
+
+            self._pos.x = self.pos.0 as f32;
+            self.facing = if self.facing == Facing::Right {
+              Facing::Left
+            } else {
+              Facing::Right
+            };
+            break;
+          }
+        }
+        self.pos.0 = (self.pos.0 as isize + xdir) as usize;
+        self.grid_pos = pos_to_grid_pos(&self.pos);
+        x += 1;
+      }
+    }
+    keep
+  }
+
+  pub fn update(&mut self, wrld: &mut World) -> bool {
+    let (falling, mut keep) = self.move_y(wrld);
+    if keep && !falling {
+      keep = self.move_x(wrld);
+    }
+
+    if keep {
+      self.draw(&wrld);
+      return true;
+    } else {
+      return false;
+    }
+  }
+
   pub fn draw(&self, wrld: &World) {
     draw_texture_ex(
       self.texture,
