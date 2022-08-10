@@ -1,9 +1,9 @@
 #[derive(Debug, Clone, Copy)]
 pub struct Rect {
-  left: usize,
-  top: usize,
-  right: usize,
-  bottom: usize,
+  pub left: usize,
+  pub top: usize,
+  pub right: usize,
+  pub bottom: usize,
 }
 
 impl Rect {
@@ -29,6 +29,13 @@ impl Rect {
       right,
       bottom,
     }
+  }
+
+  pub fn width(&self) -> usize {
+    self.right - self.left
+  }
+  pub fn height(&self) -> usize {
+    self.bottom - self.top
   }
 
   pub fn intersecting(&self, other: &Rect) -> bool {

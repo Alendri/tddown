@@ -3,6 +3,7 @@ use deb::{draw_debugs, DebugState};
 use enemy::Enemy;
 use loading::{load_levels, load_textures};
 use macroquad::prelude::*;
+use tower::Towers;
 use wrld::World;
 
 mod deb;
@@ -32,18 +33,17 @@ async fn main() {
   let lvl = load_levels(&texs).await;
 
   let mut wrld = World::new(lvl, texs);
+  let mut towers = Towers::new(&wrld);
   let mut enemies: Vec<Enemy> = Vec::new();
   let deb_state = DebugState {
     ..Default::default()
   };
 
-  let mut dt: f32;
-
   loop {
-    dt = get_frame_time();
     clear_background(BLACK);
 
-    wrld.update(&dt, &mut enemies);
+    wrld.update(&mut enemies);
+    towers.update(&wrld);
 
     ui::draw(&wrld);
 

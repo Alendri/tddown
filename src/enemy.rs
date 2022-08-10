@@ -1,7 +1,6 @@
 use macroquad::{
   prelude::{vec2, Vec2, WHITE},
   texture::{draw_texture_ex, DrawTextureParams, Texture2D},
-  time::get_frame_time,
 };
 
 use crate::{
@@ -17,7 +16,7 @@ pub enum Facing {
   Right,
 }
 
-const WALKING_SPEED: f32 = 8.0;
+const WALKING_SPEED: f32 = 32.0;
 
 pub struct Enemy {
   //Fractional position.
@@ -99,7 +98,7 @@ impl Enemy {
   fn move_x(&mut self, wrld: &mut World) -> bool {
     let mut keep = true;
     let xdir: isize = if self.facing == Facing::Left { -1 } else { 1 };
-    self._pos.x += xdir as f32 * WALKING_SPEED * 4.0 * get_frame_time();
+    self._pos.x += xdir as f32 * WALKING_SPEED * wrld.dt;
     let xdiff = (self._pos.x - self.pos.0 as f32).abs();
     if xdiff > 1.0 {
       //Update position and check for collisions.
@@ -144,6 +143,7 @@ impl Enemy {
     keep
   }
 
+  /** Returns keep */
   pub fn update(&mut self, wrld: &mut World) -> bool {
     let (falling, mut keep) = self.move_y(wrld);
     if keep && !falling {

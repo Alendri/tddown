@@ -1,11 +1,14 @@
-use macroquad::prelude::{
-  is_key_down, is_key_released, is_mouse_button_down, mouse_position, mouse_wheel, vec2, KeyCode,
-  MouseButton, Vec2,
+use macroquad::{
+  prelude::{
+    get_last_key_pressed, is_key_down, is_key_released, is_mouse_button_down, mouse_position,
+    mouse_wheel, vec2, KeyCode, MouseButton, Vec2,
+  },
+  time::get_frame_time,
 };
 
 use crate::{
   emath::xy_to_i, enemy::Enemy, level::Level, loading::Textures, spawner::spawn, tile::Tile,
-  ui::UI_WIDTH,
+  tower::TowerType, ui::UI_WIDTH,
 };
 
 const GRAVITY: f32 = 9.87;
@@ -28,6 +31,9 @@ pub struct World {
   gravity: f32,
   pub frame: usize,
   pub health: usize,
+  pub selected_tower_type: TowerType,
+  pub speed: f32,
+  pub dt: f32,
 }
 
 impl World {
@@ -51,13 +57,16 @@ impl World {
       gravity: 0.0,
       frame: 0,
       health: 100,
+      selected_tower_type: TowerType::BlockerUp,
+      speed: 1.0,
+      dt: 0.0,
     }
   }
-
   pub fn set_level(&mut self, lvl: Level) {
     self.tiles = lvl.tiles.iter().map(|bt| Tile::new(bt)).collect();
     self.level = lvl;
   }
+
   pub fn get_scaled_gravity(&self) -> f32 {
     self.gravity
   }
@@ -88,22 +97,88 @@ impl World {
     }
     None
   }
+  pub fn get_mouse_tile(&self) -> Option<&Tile> {
+    if let Some((x, y)) = self.mouse_grid {
+      if x < self.level.width && y < self.level.height {
+        return Some(&self.tiles[xy_to_i(&self.level.width, &x, &y)]);
+      }
+    }
+    None
+  }
+  pub fn get_tile_index(&self, x: &usize, y: &usize) -> usize {
+    xy_to_i(&self.level.width, x, y)
+  }
 
-  pub fn update(&mut self, dt: &f32, enemies: &mut Vec<Enemy>) {
-    self.frame += 1;
-    //UPDATE GRAVITY
-    self.gravity = GRAVITY * (32.0 / 4.0) * dt;
-
-    //MOUSE UPDATES
+  fn update_selected_tower_kind(&mut self) {
+    if let Some(key) = get_last_key_pressed() {
+      match key {
+        KeyCode::Key1 => self.selected_tower_type = TowerType::BlockerUp,
+        KeyCode::Key2 => self.selected_tower_type = TowerType::BlockerDown,
+        KeyCode::Key3 => self.selected_tower_type = TowerType::Lava,
+        _ => {}
+      }
+    }
+  }
+  fn update_mouse(&mut self) {
     self.prev_mouse_pos = self.mouse_pos;
     self.mouse_pos = mouse_position();
+
+    //Calc grid position.
+    self.mouse_grid = self.px_to_grid(mouse_position());
+  }
+  fn update_panning(&mut self) {
     let mouse_diff = (
       self.mouse_pos.0 - self.prev_mouse_pos.0,
       self.mouse_pos.1 - self.prev_mouse_pos.1,
     );
+    if is_mouse_button_down(MouseButton::Right) {
+      self.scroll_pos.x += mouse_diff.0 / self.zoom;
+      self.scroll_pos.y += mouse_diff.1 / self.zoom;
+      self._scroll_pos = self.scroll_pos;
+    } else {
+      let x_vel = match (
+        is_key_down(KeyCode::A) || is_key_down(KeyCode::Left),
+        is_key_down(KeyCode::D) || is_key_down(KeyCode::Right),
+      ) {
+        (true, false) => BASE_MOVEMENT_SPEED * get_frame_time(),
+        (false, true) => -BASE_MOVEMENT_SPEED * get_frame_time(),
+        _ => 0f32,
+      };
+      let y_vel = match (
+        is_key_down(KeyCode::W) || is_key_down(KeyCode::Up),
+        is_key_down(KeyCode::S) || is_key_down(KeyCode::Down),
+      ) {
+        (true, false) => BASE_MOVEMENT_SPEED * get_frame_time(),
+        (false, true) => -BASE_MOVEMENT_SPEED * get_frame_time(),
+        _ => 0f32,
+      };
+      if x_vel > 0.1 || x_vel < -0.1 || y_vel > 0.1 || y_vel < -0.1 {
+        self._scroll_pos = vec2(self._scroll_pos.x + x_vel, self._scroll_pos.y + y_vel);
+        self.scroll_pos = vec2(self._scroll_pos.x.round(), self._scroll_pos.y.round());
+      }
+    }
+  }
+  fn update_speed(&mut self) {
+    if is_key_released(KeyCode::KpAdd) || is_key_released(KeyCode::Enter) {
+      self.speed = (self.speed + 1.0).min(5.0).floor();
+    }
+    if is_key_released(KeyCode::KpSubtract) || is_key_released(KeyCode::Backspace) {
+      self.speed = (self.speed - 1.0).max(0.5);
+    }
+  }
 
-    //Calc grid position.
-    self.mouse_grid = self.px_to_grid(mouse_position());
+  pub fn update(&mut self, enemies: &mut Vec<Enemy>) {
+    self.frame += 1;
+
+    self.update_speed();
+
+    self.dt = get_frame_time() * self.speed;
+
+    self.update_selected_tower_kind();
+    self.update_mouse();
+
+    //UPDATE GRAVITY
+    self.gravity = GRAVITY * (32.0 / 2.0) * self.dt;
 
     //ZOOMING
     //Positive; scroll up, negative; scroll down.
@@ -123,33 +198,7 @@ impl World {
       enemies.push(spawn(&self))
     }
 
-    //PANNING
-    if is_mouse_button_down(MouseButton::Right) {
-      self.scroll_pos.x += mouse_diff.0 / self.zoom;
-      self.scroll_pos.y += mouse_diff.1 / self.zoom;
-      self._scroll_pos = self.scroll_pos;
-    } else {
-      let x_vel = match (
-        is_key_down(KeyCode::A) || is_key_down(KeyCode::Left),
-        is_key_down(KeyCode::D) || is_key_down(KeyCode::Right),
-      ) {
-        (true, false) => -BASE_MOVEMENT_SPEED * dt,
-        (false, true) => BASE_MOVEMENT_SPEED * dt,
-        _ => 0f32,
-      };
-      let y_vel = match (
-        is_key_down(KeyCode::W) || is_key_down(KeyCode::Up),
-        is_key_down(KeyCode::S) || is_key_down(KeyCode::Down),
-      ) {
-        (true, false) => BASE_MOVEMENT_SPEED * dt,
-        (false, true) => -BASE_MOVEMENT_SPEED * dt,
-        _ => 0f32,
-      };
-      if x_vel > 0.1 || x_vel < -0.1 || y_vel > 0.1 || y_vel < -0.1 {
-        self._scroll_pos = vec2(self._scroll_pos.x + x_vel, self._scroll_pos.y + y_vel);
-        self.scroll_pos = vec2(self._scroll_pos.x.round(), self._scroll_pos.y.round());
-      }
-    }
+    self.update_panning();
 
     //DRAW TILES
     for t in &self.tiles {
