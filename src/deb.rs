@@ -1,18 +1,31 @@
+use lazy_static::lazy_static;
 use macroquad::{prelude::*, telemetry};
 
 use crate::wrld::World;
 
-pub struct DebugState {
+lazy_static! {
+  pub static ref DEBUG: DebugSettings = DebugSettings {
+    zero_offset_initial_camera: true,
+    draw_rects: true,
+    ..Default::default()
+  };
+}
+
+pub struct DebugSettings {
   pub draw_fps: bool,
   pub mouse: bool,
   pub state: bool,
+  pub draw_rects: bool,
+  pub zero_offset_initial_camera: bool,
 }
-impl Default for DebugState {
+impl Default for DebugSettings {
   fn default() -> Self {
-    DebugState {
+    DebugSettings {
       draw_fps: true,
       mouse: true,
       state: true,
+      draw_rects: false,
+      zero_offset_initial_camera: false,
     }
   }
 }
@@ -47,7 +60,7 @@ impl Default for DebugPrintSettings {
   }
 }
 
-pub fn draw_debugs(deb_state: &DebugState, wrld: &World) {
+pub fn draw_debug_texts(deb_state: &DebugSettings, wrld: &World) {
   let mut y = 10f32;
   if deb_state.draw_fps {
     let f = telemetry::frame();
@@ -81,7 +94,10 @@ pub fn draw_debugs(deb_state: &DebugState, wrld: &World) {
     print(DebugPrintSettings::new(
       10.0,
       y,
-      format!("hp:{}  speed:x{}", wrld.health, wrld.speed),
+      format!(
+        "hp:{}  speed:x{}   selected type:{:?}",
+        wrld.health, wrld.speed, wrld.selected_tower_type
+      ),
     ));
   }
 }

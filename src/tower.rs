@@ -1,10 +1,11 @@
 use macroquad::{
-  prelude::{is_mouse_button_released, vec2, MouseButton, WHITE},
+  prelude::{is_mouse_button_released, vec2, MouseButton, PINK, RED, WHITE},
   texture::{draw_texture_ex, DrawTextureParams, Texture2D},
 };
-use std::iter::repeat_with;
+use std::{fmt::Display, iter::repeat_with};
 
 use crate::{
+  deb::DEBUG,
   emath::grid_pos_to_pos,
   loading::Textures,
   rect::{Collidable, Rect},
@@ -41,7 +42,7 @@ impl FrameDrawing {
   }
 }
 
-struct Tower {
+pub struct Tower {
   grid_pos: (usize, usize),
   kind: TowerType,
   /** Offset and size; in grid units. */
@@ -71,7 +72,13 @@ impl Tower {
         dest_size: Some(vec2(width, height)),
         ..Default::default()
       },
-    )
+    );
+    if DEBUG.draw_rects {
+      match self.kind {
+        TowerType::BlockerDown | TowerType::BlockerUp => self.rect.debug_draw(RED),
+        _ => self.rect.debug_draw(PINK),
+      }
+    }
   }
   pub fn new(textures: &Textures, kind: TowerType, grid_pos: (usize, usize)) -> Tower {
     let pos = grid_pos_to_pos(&grid_pos);
@@ -110,6 +117,12 @@ impl Tower {
   }
 }
 
+impl Display for Tower {
+  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    write!(f, "{:?}@{:?}", self.kind, self.grid_pos)
+  }
+}
+
 impl Collidable for Tower {
   fn collide(&self, other: &impl Collidable) -> bool {
     match self.kind {
@@ -138,6 +151,28 @@ impl Towers {
         .collect::<Vec<_>>(),
     }
   }
+  pub fn get_collided_tower(&self, other: &Rect) -> &Option<Tower> {
+    let twr = self.towers.iter().find(|t| {
+      if let Some(tower) = t {
+        let c = tower.collide(other);
+        // println!("Collide: {:?}: {}", tower.kind, c);
+        c
+      } else {
+        false
+      }
+    });
+    match twr {
+      Some(t) => t,
+      _ => &None,
+    }
+  }
+  pub fn tower_dir(kind: &TowerType) -> Dir {
+    match kind {
+      TowerType::BlockerDown => Dir::Down,
+      TowerType::BlockerUp => Dir::Up,
+      TowerType::Lava => Dir::Down,
+    }
+  }
   pub fn update(&mut self, wrld: &World) {
     for tower in &self.towers {
       if let Some(t) = tower {
@@ -148,13 +183,22 @@ impl Towers {
       return;
     }
     if let Some(mouse_tile) = wrld.get_mouse_tile() {
-      if mouse_tile.kind() == &TileType::BuildDown || mouse_tile.kind() == &TileType::BuildUp {
-        let (x, y) = &mouse_tile.grid_pos();
-        let tile_index = wrld.get_tile_index(x, y);
-        if self.towers[tile_index].is_none() {
-          //Buildable tile.
-          self.towers[tile_index] =
-            Some(Tower::new(&wrld.textures, TowerType::BlockerUp, (*x, *y)));
+      if let Some(selected_kind) = wrld.selected_tower_type {
+        let kind = mouse_tile.kind();
+        if kind == &TileType::BuildDown || kind == &TileType::BuildUp {
+          let (x, y) = &mouse_tile.grid_pos();
+          let tile_index = wrld.get_tile_index(x, y);
+          if self.towers[tile_index].is_none() {
+            //Buildable tile. Check type validity.
+            let is_valid = match Towers::tower_dir(&selected_kind) {
+              Dir::Up => kind == &TileType::BuildUp,
+              _ => kind == &TileType::BuildDown,
+            };
+            if is_valid {
+              self.towers[tile_index] =
+                Some(Tower::new(&wrld.textures, TowerType::BlockerUp, (*x, *y)));
+            }
+          }
         }
       }
     }

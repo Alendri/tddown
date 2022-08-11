@@ -1,3 +1,5 @@
+use macroquad::{prelude::Color, shapes::draw_rectangle_lines};
+
 #[derive(Debug, Clone, Copy)]
 pub struct Rect {
   pub left: usize,
@@ -42,7 +44,17 @@ impl Rect {
     let a = self;
     let b = other;
 
-    a.left <= b.right && a.right >= b.left && a.top <= b.bottom || a.bottom >= b.top
+    a.left <= b.right && a.right >= b.left && a.top <= b.bottom && a.bottom >= b.top
+  }
+  pub fn debug_draw(&self, color: Color) {
+    draw_rectangle_lines(
+      self.left as f32,
+      self.top as f32,
+      self.width() as f32,
+      self.height() as f32,
+      1.0,
+      color,
+    );
   }
 }
 
@@ -99,6 +111,14 @@ mod tests {
   fn collide_not_overlap() {
     let a = Rect::new(0, 0, 10, 10);
     let b = Rect::new(15, 15, 25, 25);
+    let result = a.intersecting(&b);
+    assert_eq!(result, false);
+  }
+
+  #[test]
+  fn collide_not_overlap_reverse() {
+    let a = Rect::new(480, 224, 512, 288);
+    let b = Rect::new(33, 32, 33, 34);
     let result = a.intersecting(&b);
     assert_eq!(result, false);
   }

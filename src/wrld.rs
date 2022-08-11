@@ -7,8 +7,15 @@ use macroquad::{
 };
 
 use crate::{
-  emath::xy_to_i, enemy::Enemy, level::Level, loading::Textures, spawner::spawn, tile::Tile,
-  tower::TowerType, ui::UI_WIDTH,
+  deb::DEBUG,
+  emath::xy_to_i,
+  enemy::Enemy,
+  level::Level,
+  loading::Textures,
+  spawner::spawn,
+  tile::Tile,
+  tower::{TowerType, Towers},
+  ui::UI_WIDTH,
 };
 
 const GRAVITY: f32 = 9.87;
@@ -31,7 +38,7 @@ pub struct World {
   gravity: f32,
   pub frame: usize,
   pub health: usize,
-  pub selected_tower_type: TowerType,
+  pub selected_tower_type: Option<TowerType>,
   pub speed: f32,
   pub dt: f32,
 }
@@ -41,8 +48,16 @@ impl World {
     let tiles: Vec<Tile> = lvl.tiles.iter().map(|bt| Tile::new(bt)).collect();
 
     World {
-      scroll_pos: vec2(UI_WIDTH + 32.0, 0.0),
-      _scroll_pos: vec2(UI_WIDTH + 32.0, 0.0),
+      scroll_pos: if DEBUG.zero_offset_initial_camera {
+        vec2(0.0, 0.0)
+      } else {
+        vec2(UI_WIDTH + 32.0, 0.0)
+      },
+      _scroll_pos: if DEBUG.zero_offset_initial_camera {
+        vec2(0.0, 0.0)
+      } else {
+        vec2(UI_WIDTH + 32.0, 0.0)
+      },
       zoom: 1.0,
       _zoom: 1.0,
       sensitivity: 0.005,
@@ -57,7 +72,7 @@ impl World {
       gravity: 0.0,
       frame: 0,
       health: 100,
-      selected_tower_type: TowerType::BlockerUp,
+      selected_tower_type: None,
       speed: 1.0,
       dt: 0.0,
     }
@@ -112,9 +127,10 @@ impl World {
   fn update_selected_tower_kind(&mut self) {
     if let Some(key) = get_last_key_pressed() {
       match key {
-        KeyCode::Key1 => self.selected_tower_type = TowerType::BlockerUp,
-        KeyCode::Key2 => self.selected_tower_type = TowerType::BlockerDown,
-        KeyCode::Key3 => self.selected_tower_type = TowerType::Lava,
+        KeyCode::Key1 => self.selected_tower_type = Some(TowerType::BlockerUp),
+        KeyCode::Key2 => self.selected_tower_type = Some(TowerType::BlockerDown),
+        KeyCode::Key3 => self.selected_tower_type = Some(TowerType::Lava),
+        KeyCode::Escape => self.selected_tower_type = None,
         _ => {}
       }
     }
@@ -167,7 +183,7 @@ impl World {
     }
   }
 
-  pub fn update(&mut self, enemies: &mut Vec<Enemy>) {
+  pub fn update(&mut self, enemies: &mut Vec<Enemy>, towers: &Towers) {
     self.frame += 1;
 
     self.update_speed();
@@ -203,9 +219,12 @@ impl World {
     //DRAW TILES
     for t in &self.tiles {
       t.draw(&self);
+      if DEBUG.draw_rects {
+        t.debug_draw();
+      }
     }
 
     //UPDATE ENEMIES
-    enemies.retain_mut(|e| e.update(self));
+    enemies.retain_mut(|e| e.update(self, towers));
   }
 }

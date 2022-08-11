@@ -1,5 +1,5 @@
 #![allow(dead_code)]
-use deb::{draw_debugs, DebugState};
+use deb::{draw_debug_texts, DebugSettings};
 use enemy::Enemy;
 use loading::{load_levels, load_textures};
 use macroquad::prelude::*;
@@ -32,22 +32,24 @@ async fn main() {
   let texs = load_textures().await;
   let lvl = load_levels(&texs).await;
 
+  let deb_state = DebugSettings {
+    zero_offset_initial_camera: true,
+    draw_rects: true,
+    ..Default::default()
+  };
   let mut wrld = World::new(lvl, texs);
   let mut towers = Towers::new(&wrld);
   let mut enemies: Vec<Enemy> = Vec::new();
-  let deb_state = DebugState {
-    ..Default::default()
-  };
 
   loop {
     clear_background(BLACK);
 
-    wrld.update(&mut enemies);
+    wrld.update(&mut enemies, &towers);
     towers.update(&wrld);
 
     ui::draw(&wrld);
 
-    draw_debugs(&deb_state, &wrld);
+    draw_debug_texts(&deb_state, &wrld);
     next_frame().await
   }
 }

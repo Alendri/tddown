@@ -1,11 +1,12 @@
 use macroquad::{
-  prelude::{vec2, WHITE},
+  prelude::{vec2, GREEN, PURPLE, WHITE},
   texture::{draw_texture_ex, DrawTextureParams, Texture2D},
 };
 
 use crate::{
   emath::grid_pos_to_pos,
   rect::{Collidable, Rect},
+  tower::{Dir, Towers},
   wrld::World,
 };
 
@@ -62,6 +63,15 @@ impl Collidable for Tile {
     &self.rect
   }
   fn collide(&self, other: &impl Collidable) -> bool {
+    // if !self.passable {
+    //   println!(
+    //     "Collide: {:?}  {:?}  {:?}   ||   {:?}",
+    //     self.kind(),
+    //     self.base.grid_pos,
+    //     self.rect,
+    //     other.get_rect()
+    //   );
+    // }
     !self.passable && self.rect.intersecting(other.get_rect())
   }
 }
@@ -87,13 +97,28 @@ impl Tile {
     self.base.grid_pos
   }
 
+  pub fn debug_draw(&self) {
+    if !self.passable {
+      self.rect.debug_draw(PURPLE);
+    }
+  }
+
   pub fn draw(&self, wrld: &World) {
+    let color = if let Some(selected_kind) = wrld.selected_tower_type {
+      match (self.kind(), Towers::tower_dir(&selected_kind)) {
+        (TileType::BuildDown, Dir::Down) => GREEN,
+        (TileType::BuildUp, Dir::Up) => GREEN,
+        _ => WHITE,
+      }
+    } else {
+      WHITE
+    };
     draw_texture_ex(
       self.base.texture,
       ((self.base.grid_pos.0 * 32) as f32 + wrld.scroll_pos.x) * wrld.zoom,
       ((self.base.grid_pos.1 * 32) as f32 + wrld.scroll_pos.y) * wrld.zoom,
       // Color::from_rgba(20, 20, 20, 255),
-      WHITE,
+      color,
       DrawTextureParams {
         dest_size: Some(vec2(
           wrld.grid_size * self.base.size.0 as f32,
