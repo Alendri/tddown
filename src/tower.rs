@@ -27,10 +27,10 @@ pub enum Dir {
 }
 
 pub struct FrameDrawing {
-  frames: Vec<Texture2D>,
-  frame: usize,
-  count: usize,
-  timer: f32,
+  pub frames: Vec<Texture2D>,
+  pub frame: usize,
+  pub count: usize,
+  pub timer: f32,
 }
 impl FrameDrawing {
   pub fn new(frames: Vec<Texture2D>) -> FrameDrawing {
@@ -157,7 +157,7 @@ impl Collidable for Tower {
       _ => false,
     }
   }
-  fn get_rect(&self) -> &Rect {
+  fn get_hitbox(&self) -> &Rect {
     &self.rect
   }
 }

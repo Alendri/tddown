@@ -1,5 +1,6 @@
 #![allow(dead_code)]
 use deb::{draw_debug_texts, DebugSettings};
+use effects::Effects;
 use enemy::Enemy;
 use loading::{load_levels, load_textures};
 use macroquad::prelude::*;
@@ -7,6 +8,7 @@ use tower::Towers;
 use wrld::World;
 
 mod deb;
+mod effects;
 mod emath;
 mod enemy;
 mod level;
@@ -37,6 +39,9 @@ async fn main() {
     draw_rects: true,
     ..Default::default()
   };
+  let mut effects: Vec<Effects> = Vec::new();
+  // effects.push(Effects::LavaDrop(LavaDrop::new((0, 0), &texs)));
+  //  vec![Effects::LavaDrop(LavaDrop::new())];
   let mut wrld = World::new(lvl, texs);
   let mut towers = Towers::new(&wrld);
   let mut enemies: Vec<Enemy> = Vec::new();

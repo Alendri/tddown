@@ -216,10 +216,10 @@ impl Enemy {
 }
 
 impl Collidable for Enemy {
-  fn get_rect(&self) -> &Rect {
+  fn get_hitbox(&self) -> &Rect {
     &self.hitbox
   }
   fn collide(&self, other: &impl Collidable) -> bool {
-    self.hitbox.intersecting(other.get_rect())
+    self.hitbox.intersecting(other.get_hitbox())
   }
 }

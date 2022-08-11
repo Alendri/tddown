@@ -59,7 +59,7 @@ pub struct Tile {
   passable: bool,
 }
 impl Collidable for Tile {
-  fn get_rect(&self) -> &Rect {
+  fn get_hitbox(&self) -> &Rect {
     &self.rect
   }
   fn collide(&self, other: &impl Collidable) -> bool {
@@ -72,7 +72,7 @@ impl Collidable for Tile {
     //     other.get_rect()
     //   );
     // }
-    !self.passable && self.rect.intersecting(other.get_rect())
+    !self.passable && self.rect.intersecting(other.get_hitbox())
   }
 }
 impl Tile {

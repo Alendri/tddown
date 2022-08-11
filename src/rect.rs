@@ -59,17 +59,16 @@ impl Rect {
 }
 
 impl Collidable for Rect {
-  fn get_rect(&self) -> &Rect {
+  fn get_hitbox(&self) -> &Rect {
     &self
-  }
-  fn collide(&self, other: &impl Collidable) -> bool {
-    self.intersecting(other.get_rect())
   }
 }
 
 pub trait Collidable {
-  fn get_rect(&self) -> &Rect;
-  fn collide(&self, other: &impl Collidable) -> bool;
+  fn get_hitbox(&self) -> &Rect;
+  fn collide(&self, other: &impl Collidable) -> bool {
+    self.get_hitbox().intersecting(other.get_hitbox())
+  }
 }
 
 #[cfg(test)]
