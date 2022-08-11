@@ -1,6 +1,7 @@
 use macroquad::{
   prelude::{is_mouse_button_released, vec2, MouseButton, PINK, RED, WHITE},
   texture::{draw_texture_ex, DrawTextureParams, Texture2D},
+  time::get_frame_time,
 };
 use std::{fmt::Display, iter::repeat_with};
 
@@ -40,12 +41,15 @@ impl FrameDrawing {
       timer: 0.4,
     }
   }
+  pub fn reset_timer(&mut self) {
+    self.timer = 0.4;
+  }
 }
 
 pub struct Tower {
   grid_pos: (usize, usize),
   kind: TowerType,
-  /** Offset and size; in grid units. */
+  /** Offset and size; in pixels units. */
   draw_pos: Rect,
   rect: Rect,
   texture: Texture2D,
@@ -55,18 +59,25 @@ pub struct Tower {
 }
 
 impl Tower {
-  pub fn draw(&self, wrld: &World) {
-    let t = match &self.atlas {
-      Some(frames) => frames.frames[frames.frame],
-      None => self.texture,
-    };
+  pub fn get_texture(&mut self) -> Texture2D {
+    if let Some(atlas) = &mut self.atlas {
+      atlas.timer -= get_frame_time();
+      if atlas.timer <= 0.0 {
+        atlas.reset_timer();
+        atlas.frame = (atlas.frame + 1) % atlas.count;
+      }
+      return atlas.frames[atlas.frame];
+    }
+    self.texture
+  }
+  pub fn draw(&mut self, wrld: &World) {
     let tl = self.draw_pos.tl();
-    let width = self.draw_pos.width() as f32 * wrld.grid_size;
-    let height = self.draw_pos.height() as f32 * wrld.grid_size;
+    let width = self.draw_pos.width() as f32 * wrld.zoom;
+    let height = self.draw_pos.height() as f32 * wrld.zoom;
     draw_texture_ex(
-      t,
-      (tl.0 as f32 * 32.0 + wrld.scroll_pos.x) * wrld.zoom,
-      (tl.1 as f32 * 32.0 + wrld.scroll_pos.y) * wrld.zoom,
+      self.get_texture(),
+      (tl.0 as f32 + wrld.scroll_pos.x) * wrld.zoom,
+      (tl.1 as f32 + wrld.scroll_pos.y) * wrld.zoom,
       WHITE,
       DrawTextureParams {
         dest_size: Some(vec2(width, height)),
@@ -86,7 +97,12 @@ impl Tower {
       TowerType::BlockerDown => Tower {
         grid_pos,
         kind,
-        draw_pos: Rect::new(grid_pos.0, grid_pos.1 + 1, grid_pos.0 + 1, grid_pos.1 + 3),
+        draw_pos: Rect::new(
+          grid_pos.0 * 32,
+          (grid_pos.1 + 1) * 32,
+          (grid_pos.0 + 1) * 32,
+          (grid_pos.1 + 3) * 32,
+        ),
         rect: Rect::new(pos.0, pos.1 + 32, pos.0 + 32, pos.1 + 32 * 3),
         texture: textures.blocker_down,
         trigger: None,
@@ -96,7 +112,13 @@ impl Tower {
       TowerType::BlockerUp => Tower {
         grid_pos,
         kind,
-        draw_pos: Rect::new(grid_pos.0, grid_pos.1 - 2, grid_pos.0 + 1, grid_pos.1),
+        draw_pos: Rect::new(
+          grid_pos.0 * 32,
+          (grid_pos.1 - 2) * 32,
+          (grid_pos.0 + 1) * 32,
+          grid_pos.1 * 32,
+        ),
+        // draw_pos: Rect::new(grid_pos.0, grid_pos.1 - 2, grid_pos.0 + 1, grid_pos.1),
         rect: Rect::new(pos.0, pos.1 - 64, pos.0 + 32, pos.1),
         texture: textures.blocker_up,
         trigger: None,
@@ -106,7 +128,12 @@ impl Tower {
       TowerType::Lava => Tower {
         grid_pos,
         kind,
-        draw_pos: Rect::new(grid_pos.0, grid_pos.1 + 1, grid_pos.0 + 1, grid_pos.1 + 2),
+        draw_pos: Rect::new(
+          grid_pos.0 * 32,
+          grid_pos.1 * 32 + 20,
+          (grid_pos.0 + 1) * 32,
+          (grid_pos.1 + 1) * 32 + 20,
+        ),
         rect: Rect::new(pos.0, pos.1 + 32, pos.0 + 32, pos.1 + 2 * 32),
         texture: textures.tower_lava[0],
         trigger: None,
@@ -174,7 +201,7 @@ impl Towers {
     }
   }
   pub fn update(&mut self, wrld: &World) {
-    for tower in &self.towers {
+    for tower in &mut self.towers {
       if let Some(t) = tower {
         t.draw(wrld);
       }
@@ -195,8 +222,7 @@ impl Towers {
               _ => kind == &TileType::BuildDown,
             };
             if is_valid {
-              self.towers[tile_index] =
-                Some(Tower::new(&wrld.textures, TowerType::BlockerUp, (*x, *y)));
+              self.towers[tile_index] = Some(Tower::new(&wrld.textures, selected_kind, (*x, *y)));
             }
           }
         }
