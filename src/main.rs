@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 use deb::{draw_debug_texts, DebugSettings};
-use effects::Effects;
+use effects::{spawn_effect, Effect, EffectKind, Effects};
 use enemy::Enemy;
 use loading::{load_levels, load_textures};
 use macroquad::prelude::*;
@@ -40,8 +40,6 @@ async fn main() {
     ..Default::default()
   };
   let mut effects: Vec<Effects> = Vec::new();
-  // effects.push(Effects::LavaDrop(LavaDrop::new((0, 0), &texs)));
-  //  vec![Effects::LavaDrop(LavaDrop::new())];
   let mut wrld = World::new(lvl, texs);
   let mut towers = Towers::new(&wrld);
   let mut enemies: Vec<Enemy> = Vec::new();
@@ -51,6 +49,28 @@ async fn main() {
 
     wrld.update(&mut enemies, &towers);
     towers.update(&wrld);
+    let spawn_effects = towers.get_spawns(&wrld);
+    for (kind, pos) in spawn_effects {
+      spawn_effect(&mut effects, &wrld.textures, kind, pos);
+    }
+
+    let mut effects_to_spawn: Vec<(EffectKind, (usize, usize))> = Vec::new();
+
+    effects.retain_mut(|effect| {
+      let ret = match effect {
+        Effects::LavaDrop(ef) => ef.update(&wrld),
+        Effects::LavaSplash(ef) => ef.update(&wrld),
+      };
+      if let Some(spawn) = ret.spawn {
+        effects_to_spawn.push(spawn);
+      }
+      // println!("|- keep effect {:?}, spawn: {:?}", ret.keep, ret.spawn);
+      ret.keep
+    });
+
+    for (kind, pos) in effects_to_spawn {
+      spawn_effect(&mut effects, &wrld.textures, kind, pos);
+    }
 
     ui::draw(&wrld);
 

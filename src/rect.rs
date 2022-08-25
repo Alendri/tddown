@@ -1,3 +1,5 @@
+use std::ops::{Add, Sub};
+
 use macroquad::{prelude::Color, shapes::draw_rectangle_lines};
 
 #[derive(Debug, Clone, Copy)]
@@ -55,6 +57,40 @@ impl Rect {
       1.0,
       color,
     );
+  }
+}
+
+impl Add<&Rect> for Rect {
+  type Output = Rect;
+  fn add(self, rhs: &Rect) -> Self::Output {
+    Rect::new(
+      self.left + rhs.left,
+      self.top + rhs.top,
+      self.right + rhs.right,
+      self.bottom + rhs.bottom,
+    )
+  }
+}
+impl Add<&(usize, usize)> for Rect {
+  type Output = Rect;
+  fn add(self, rhs: &(usize, usize)) -> Self::Output {
+    Rect::new(
+      self.left + rhs.0,
+      self.top + rhs.1,
+      self.right + rhs.0,
+      self.bottom + rhs.1,
+    )
+  }
+}
+impl Sub<&(usize, usize)> for Rect {
+  type Output = Rect;
+  fn sub(self, rhs: &(usize, usize)) -> Self::Output {
+    Rect::new(
+      self.left - rhs.0,
+      self.top - rhs.1,
+      self.right - rhs.0,
+      self.bottom - rhs.1,
+    )
   }
 }
 

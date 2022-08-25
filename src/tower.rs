@@ -7,6 +7,7 @@ use std::{fmt::Display, iter::repeat_with};
 
 use crate::{
   deb::DEBUG,
+  effects::EffectKind,
   emath::grid_pos_to_pos,
   loading::Textures,
   rect::{Collidable, Rect},
@@ -31,18 +32,34 @@ pub struct FrameDrawing {
   pub frame: usize,
   pub count: usize,
   pub timer: f32,
+  pub timeout: f32,
 }
 impl FrameDrawing {
-  pub fn new(frames: Vec<Texture2D>) -> FrameDrawing {
+  pub fn new(frames: Vec<Texture2D>, timer: f32) -> FrameDrawing {
     FrameDrawing {
       count: frames.len(),
       frames,
       frame: 0,
-      timer: 0.4,
+      timer,
+      timeout: timer,
     }
   }
   pub fn reset_timer(&mut self) {
-    self.timer = 0.4;
+    self.timer = self.timeout;
+  }
+  pub fn is_end(&self) -> bool {
+    self.frame >= self.count - 1
+  }
+}
+
+struct EffectSpawnData {
+  pub timer: f32,
+  pub kind: EffectKind,
+  pub pos: (usize, usize),
+}
+impl EffectSpawnData {
+  pub fn reset_timer(&mut self) {
+    self.timer = 3.0;
   }
 }
 
@@ -56,6 +73,7 @@ pub struct Tower {
   trigger: Option<Rect>,
   atlas: Option<FrameDrawing>,
   direction: Dir,
+  spawn: Option<EffectSpawnData>,
 }
 
 impl Tower {
@@ -91,6 +109,16 @@ impl Tower {
       }
     }
   }
+  pub fn get_spawn(&mut self, wrld: &World) -> Option<(EffectKind, (usize, usize))> {
+    if let Some(s) = &mut self.spawn {
+      s.timer -= wrld.dt;
+      if s.timer <= 0.0 {
+        s.reset_timer();
+        return Some((s.kind.clone(), s.pos));
+      }
+    }
+    None
+  }
   pub fn new(textures: &Textures, kind: TowerType, grid_pos: (usize, usize)) -> Tower {
     let pos = grid_pos_to_pos(&grid_pos);
     match kind {
@@ -108,6 +136,7 @@ impl Tower {
         trigger: None,
         atlas: None,
         direction: Dir::Down,
+        spawn: None,
       },
       TowerType::BlockerUp => Tower {
         grid_pos,
@@ -124,6 +153,7 @@ impl Tower {
         trigger: None,
         atlas: None,
         direction: Dir::Up,
+        spawn: None,
       },
       TowerType::Lava => Tower {
         grid_pos,
@@ -137,8 +167,13 @@ impl Tower {
         rect: Rect::new(pos.0, pos.1 + 32, pos.0 + 32, pos.1 + 2 * 32),
         texture: textures.tower_lava[0],
         trigger: None,
-        atlas: Some(FrameDrawing::new(textures.tower_lava.clone())),
+        atlas: Some(FrameDrawing::new(textures.tower_lava.clone(), 0.4)),
         direction: Dir::Down,
+        spawn: Some(EffectSpawnData {
+          kind: EffectKind::LavaDrop,
+          pos: (grid_pos.0, grid_pos.1 + 1),
+          timer: 1.0,
+        }),
       },
     }
   }
@@ -193,12 +228,26 @@ impl Towers {
       _ => &None,
     }
   }
+
   pub fn tower_dir(kind: &TowerType) -> Dir {
     match kind {
       TowerType::BlockerDown => Dir::Down,
       TowerType::BlockerUp => Dir::Up,
       TowerType::Lava => Dir::Down,
     }
+  }
+  pub fn get_spawns(&mut self, wrld: &World) -> Vec<(EffectKind, (usize, usize))> {
+    self
+      .towers
+      .iter_mut()
+      .filter_map(|t| {
+        if let Some(tower) = t {
+          tower.get_spawn(wrld)
+        } else {
+          None
+        }
+      })
+      .collect()
   }
   pub fn update(&mut self, wrld: &World) {
     for tower in &mut self.towers {
