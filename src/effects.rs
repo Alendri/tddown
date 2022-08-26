@@ -1,3 +1,4 @@
+use enum_dispatch::enum_dispatch;
 use macroquad::{
   prelude::{vec2, Vec2, RED, WHITE},
   texture::{draw_texture_ex, DrawTextureParams, Texture2D},
@@ -12,9 +13,10 @@ use crate::{
   wrld::World,
 };
 
+#[enum_dispatch(Effect)]
 pub enum Effects {
-  LavaDrop(LavaDrop),
-  LavaSplash(LavaSplash),
+  LavaDrop,
+  LavaSplash,
 }
 
 #[derive(Debug, PartialEq, Clone, Copy)]
@@ -36,10 +38,19 @@ impl EffectUpdateReturn {
       keep: true,
     }
   }
+  /** Returns keep: false and spawn: none. */
+  pub fn abandon() -> EffectUpdateReturn {
+    EffectUpdateReturn {
+      spawn: None,
+      keep: false,
+    }
+  }
 }
+#[enum_dispatch]
 pub trait Effect {
   fn get_draw_pos(&self) -> Rect;
   fn get_pos(&self) -> &(usize, usize);
+  fn get_rect(&self) -> &Rect;
   fn get_atlas(&mut self) -> &mut Option<FrameDrawing>;
   fn get_default_texture(&self) -> Texture2D;
   fn get_kind(&self) -> &EffectKind;
@@ -142,13 +153,6 @@ impl LavaDrop {
 
         if let Some(tile_below) = wrld.get_tile(&(rect_grid_pos.0 as usize), &(rect_grid_pos.1 + 1))
         {
-          // println!(
-          //   "rect: {:?}, Tile below: {:?}, {:?}, {:?}",
-          //   rect,
-          //   tile_below.kind(),
-          //   tile_below.grid_pos(),
-          //   tile_below.get_hitbox(),
-          // );
           if tile_below.collide(&rect) {
             //We have collided.
             return false;
@@ -170,13 +174,16 @@ impl Collidable for LavaDrop {
   fn get_hitbox(&self) -> &Rect {
     &self.hitbox
   }
-  fn collide(&self, _other: &impl Collidable) -> bool {
-    false
+  fn collide(&self, other: &impl Collidable) -> bool {
+    self.hitbox.intersecting(other.get_hitbox())
   }
 }
 impl Effect for LavaDrop {
   fn get_atlas(&mut self) -> &mut Option<FrameDrawing> {
     &mut self.atlas
+  }
+  fn get_rect(&self) -> &Rect {
+    &self.hitbox
   }
   fn get_default_texture(&self) -> Texture2D {
     self.default_texture
@@ -192,7 +199,6 @@ impl Effect for LavaDrop {
   }
   fn update(&mut self, wrld: &World) -> EffectUpdateReturn {
     let falling = self.move_y(wrld);
-    println!("Update LavaDrop {}", falling);
     if !falling {
       return EffectUpdateReturn::new(
         false,
@@ -228,7 +234,7 @@ impl LavaSplash {
       hitbox: Rect::new(pos.0, pos.1, pos.0 + 32, pos.1 + 32),
       draw_pos: Rect::new(0, 13, 32, 45),
       default_texture: textures.lava_splash[0],
-      atlas: Some(FrameDrawing::new(textures.lava_splash.clone(), 0.2)),
+      atlas: Some(FrameDrawing::new(textures.lava_splash.clone(), 0.1)),
     }
   }
 }
@@ -237,13 +243,16 @@ impl Collidable for LavaSplash {
   fn get_hitbox(&self) -> &Rect {
     &self.hitbox
   }
-  fn collide(&self, _other: &impl Collidable) -> bool {
-    false
+  fn collide(&self, other: &impl Collidable) -> bool {
+    self.hitbox.intersecting(other.get_hitbox())
   }
 }
 impl Effect for LavaSplash {
   fn get_atlas(&mut self) -> &mut Option<FrameDrawing> {
     &mut self.atlas
+  }
+  fn get_rect(&self) -> &Rect {
+    &self.hitbox
   }
   fn get_default_texture(&self) -> Texture2D {
     self.default_texture
@@ -264,12 +273,16 @@ impl Effect for LavaSplash {
 
     if let Some(atlas) = self.get_atlas() {
       if atlas.is_end() {
-        EffectUpdateReturn::new(false, None)
+        EffectUpdateReturn::abandon()
       } else {
         EffectUpdateReturn::keep()
       }
     } else {
-      EffectUpdateReturn::new(false, None)
+      EffectUpdateReturn::abandon()
     }
   }
+}
+
+pub fn has_effect_collision(effects: &Vec<Effects>, hitbox: Rect) -> bool {
+  effects.iter().any(|e| e.get_rect().collide(&hitbox))
 }

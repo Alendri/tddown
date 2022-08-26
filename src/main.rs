@@ -47,7 +47,7 @@ async fn main() {
   loop {
     clear_background(BLACK);
 
-    wrld.update(&mut enemies, &towers);
+    wrld.update(&mut enemies, &towers, &effects);
     towers.update(&wrld);
     let spawn_effects = towers.get_spawns(&wrld);
     for (kind, pos) in spawn_effects {
@@ -55,12 +55,12 @@ async fn main() {
     }
 
     let mut effects_to_spawn: Vec<(EffectKind, (usize, usize))> = Vec::new();
-
     effects.retain_mut(|effect| {
-      let ret = match effect {
-        Effects::LavaDrop(ef) => ef.update(&wrld),
-        Effects::LavaSplash(ef) => ef.update(&wrld),
-      };
+      let ret = effect.update(&wrld);
+      // let ret = match effect {
+      //   Effects::LavaDrop(ef) => ef.update(&wrld),
+      //   Effects::LavaSplash(ef) => ef.update(&wrld),
+      // };
       if let Some(spawn) = ret.spawn {
         effects_to_spawn.push(spawn);
       }

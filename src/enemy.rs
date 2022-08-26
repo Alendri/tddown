@@ -5,6 +5,7 @@ use macroquad::{
 
 use crate::{
   deb::DEBUG,
+  effects::{has_effect_collision, Effects},
   emath::pos_to_grid_pos,
   rect::{Collidable, Rect},
   tile::TileType,
@@ -18,7 +19,7 @@ pub enum Facing {
   Right,
 }
 
-const WALKING_SPEED: f32 = 32.0;
+const WALKING_SPEED: f32 = 48.0;
 
 pub struct Enemy {
   //Fractional position.
@@ -114,7 +115,7 @@ impl Enemy {
   }
 
   /** Returns keep */
-  fn move_x(&mut self, wrld: &mut World, towers: &Towers) -> bool {
+  fn move_x(&mut self, wrld: &mut World, towers: &Towers, effects: &Vec<Effects>) -> bool {
     let mut keep = true;
     let xdir: isize = if self.facing == Facing::Left { -1 } else { 1 };
     self._pos.x += xdir as f32 * WALKING_SPEED * wrld.dt;
@@ -130,7 +131,11 @@ impl Enemy {
           (self.pos.0 as isize + self.hitbox.right as isize + 1 * xdir).max(4) as usize,
           self.pos.1 + self.hitbox.bottom,
         );
-        let rect_grid_pos = pos_to_grid_pos(&rect.tl());
+
+        if has_effect_collision(effects, rect) {
+          //Kill!
+          return false;
+        }
         if let Some(_twr) = towers.get_collided_tower(&rect) {
           //We have collided with a tower.
           self._pos.x = self.pos.0 as f32;
@@ -141,7 +146,14 @@ impl Enemy {
           };
           break;
         }
+        // effects.retain(|e| e)
 
+        // effects.into_iter().find(|e| e.)
+        // if effects.iter().find(|effect| effect) {
+
+        // }
+
+        let rect_grid_pos = pos_to_grid_pos(&rect.tl());
         if let Some(next_tile) = wrld.get_tile(
           &((rect_grid_pos.0 as isize + xdir) as usize),
           &rect_grid_pos.1,
@@ -178,10 +190,10 @@ impl Enemy {
   }
 
   /** Returns keep */
-  pub fn update(&mut self, wrld: &mut World, towers: &Towers) -> bool {
+  pub fn update(&mut self, wrld: &mut World, towers: &Towers, effects: &Vec<Effects>) -> bool {
     let (falling, mut keep) = self.move_y(wrld, towers);
     if keep && !falling {
-      keep = self.move_x(wrld, towers);
+      keep = self.move_x(wrld, towers, effects);
     }
 
     if keep {

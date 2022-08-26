@@ -8,6 +8,7 @@ use macroquad::{
 
 use crate::{
   deb::DEBUG,
+  effects::Effects,
   emath::xy_to_i,
   enemy::Enemy,
   level::Level,
@@ -183,7 +184,7 @@ impl World {
     }
   }
 
-  pub fn update(&mut self, enemies: &mut Vec<Enemy>, towers: &Towers) {
+  pub fn update(&mut self, enemies: &mut Vec<Enemy>, towers: &Towers, effects: &Vec<Effects>) {
     self.frame += 1;
 
     self.update_speed();
@@ -225,6 +226,6 @@ impl World {
     }
 
     //UPDATE ENEMIES
-    enemies.retain_mut(|e| e.update(self, towers));
+    enemies.retain_mut(|e| e.update(self, towers, effects));
   }
 }

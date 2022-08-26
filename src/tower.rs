@@ -54,12 +54,13 @@ impl FrameDrawing {
 
 struct EffectSpawnData {
   pub timer: f32,
+  pub time: f32,
   pub kind: EffectKind,
   pub pos: (usize, usize),
 }
 impl EffectSpawnData {
   pub fn reset_timer(&mut self) {
-    self.timer = 3.0;
+    self.timer = self.time;
   }
 }
 
@@ -121,6 +122,22 @@ impl Tower {
   }
   pub fn new(textures: &Textures, kind: TowerType, grid_pos: (usize, usize)) -> Tower {
     let pos = grid_pos_to_pos(&grid_pos);
+
+    //
+    //
+    //
+    //
+    //
+    //
+    //
+    //
+    //
+    //
+    //
+    //
+    //
+    // TOWERS
+
     match kind {
       TowerType::BlockerDown => Tower {
         grid_pos,
@@ -172,10 +189,29 @@ impl Tower {
         spawn: Some(EffectSpawnData {
           kind: EffectKind::LavaDrop,
           pos: (grid_pos.0, grid_pos.1 + 1),
-          timer: 1.0,
+          timer: 0.0,
+          time: 3.0,
         }),
       },
     }
+
+    //
+    //
+    //
+    //
+    //
+    //
+    //
+    //
+    //
+    //
+    //
+    //
+    //
+    //
+    //
+    //
+    //
   }
 }
 
@@ -197,6 +233,19 @@ impl Collidable for Tower {
   }
 }
 
+/////////////
+/////////////
+/////////////
+/////////////
+/////////////
+/////////////
+/////////////
+/////////////
+/////////////
+/////////////
+/////////////
+/////////////
+/////////////
 /////////////
 /////////////
 /////////////
