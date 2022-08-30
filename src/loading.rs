@@ -1,12 +1,17 @@
+use enum_map::EnumMap;
 use macroquad::{
   rand::RandomRange,
   texture::{load_image, load_texture, Texture2D},
 };
+use serde::Deserialize;
+use std::fs::read_to_string;
+use toml::{self, de::Error};
 
 use crate::{
   emath::i_to_xy,
   level::Level,
   tile::{BaseTile, TileType},
+  tower::TowerType,
 };
 
 static ASSET_PATH: &str = "assets";
@@ -26,20 +31,40 @@ pub struct Textures {
   pub border_top_left: Texture2D,
   pub border_top_right: Texture2D,
   pub border_top: Texture2D,
+  // pub btn_blocker_down_highlight: Texture2D,
+  // pub btn_blocker_down_selected: Texture2D,
+  // pub btn_blocker_down: Texture2D,
+  // pub btn_blocker_up_highlight: Texture2D,
+  // pub btn_blocker_up_selected: Texture2D,
+  // pub btn_blocker_up: Texture2D,
+  // pub btn_collector_highlight: Texture2D,
+  // pub btn_collector_selected: Texture2D,
+  // pub btn_collector: Texture2D,
+  // pub btn_lava_highlight: Texture2D,
+  // pub btn_lava_selected: Texture2D,
+  // pub btn_lava: Texture2D,
   pub build_down: Texture2D,
   pub build_up: Texture2D,
   pub empty: Texture2D,
   pub enemy: Texture2D,
   pub goal: Texture2D,
-  pub tower_lava: Vec<Texture2D>,
   pub lava_drop: Texture2D,
   pub lava_splash: Vec<Texture2D>,
   pub spawn: Texture2D,
   pub terrain_center: Texture2D,
   pub terrain_down: Texture2D,
   pub terrain_up: Texture2D,
+  pub tower_lava: Vec<Texture2D>,
   pub turret_down: Texture2D,
   pub turret_up: Texture2D,
+  pub tower_buttons: EnumMap<TowerType, ButtonTexs>,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct ButtonTexs {
+  pub normal: Texture2D,
+  pub highlighted: Texture2D,
+  pub selected: Texture2D,
 }
 
 fn tex_path(name: &str) -> String {
@@ -48,8 +73,13 @@ fn tex_path(name: &str) -> String {
 fn tower_path(name: &str) -> String {
   format!("{}/towers/{}.png", TEXTURE_PATH, name)
 }
+/** Name with .ext */
+fn level_path(name: &str) -> String {
+  format!("{}/levels/{}", ASSET_PATH, name)
+}
 
 pub async fn load_textures() -> Textures {
+  // let mut map = ;
   Textures {
     bg_0: load_texture(&tex_path("bg_0")).await.unwrap(),
     bg_1: load_texture(&tex_path("bg_1")).await.unwrap(),
@@ -95,6 +125,58 @@ pub async fn load_textures() -> Textures {
 
     //Enemies
     enemy: load_texture(&tex_path("enemy")).await.unwrap(),
+
+    //UI
+    // btn_blocker_down_highlight: load_texture(&tower_path("blocker_down_btn_highlight"))
+    //   .await
+    //   .unwrap(),
+    // btn_blocker_down_selected: load_texture(&tower_path("blocker_down_btn_selected"))
+    //   .await
+    //   .unwrap(),
+    // btn_blocker_down: load_texture(&tower_path("blocker_down_btn")).await.unwrap(),
+    // btn_blocker_up_highlight: load_texture(&tower_path("blocker_up_btn_highlight"))
+    //   .await
+    //   .unwrap(),
+    // btn_blocker_up_selected: load_texture(&tower_path("blocker_up_btn_selected"))
+    //   .await
+    //   .unwrap(),
+    // btn_blocker_up: load_texture(&tower_path("blocker_up_btn")).await.unwrap(),
+    // btn_lava_highlight: load_texture(&tower_path("lava_btn_highlight"))
+    //   .await
+    //   .unwrap(),
+    // btn_lava_selected: load_texture(&tower_path("lava_btn_selected"))
+    //   .await
+    //   .unwrap(),
+    // btn_lava: load_texture(&tower_path("lava_btn")).await.unwrap(),
+    // btn_collector_highlight: load_texture(&tower_path("collector_btn_highlight"))
+    //   .await
+    //   .unwrap(),
+    // btn_collector_selected: load_texture(&tower_path("collector_btn_selected"))
+    //   .await
+    //   .unwrap(),
+    // btn_collector: load_texture(&tower_path("collector_btn")).await.unwrap(),
+    tower_buttons: enum_map! {
+      TowerType::BlockerDown => ButtonTexs {
+        normal: load_texture(&tower_path("blocker_down_btn")).await.unwrap(),
+        highlighted: load_texture(&tower_path("blocker_down_btn_highlight")).await.unwrap(),
+        selected: load_texture(&tower_path("blocker_down_btn_selected")).await.unwrap()
+      },
+      TowerType::BlockerUp => ButtonTexs {
+        normal: load_texture(&tower_path("blocker_up_btn")).await.unwrap(),
+        highlighted: load_texture(&tower_path("blocker_up_btn_highlight")).await.unwrap(),
+        selected: load_texture(&tower_path("blocker_up_btn_selected")).await.unwrap()
+      },
+      TowerType::Collector => ButtonTexs {
+        normal: load_texture(&tower_path("collector_btn")).await.unwrap(),
+        highlighted: load_texture(&tower_path("collector_btn_highlight")).await.unwrap(),
+        selected: load_texture(&tower_path("collector_btn_selected")).await.unwrap()
+      },
+      TowerType::Lava => ButtonTexs {
+        normal: load_texture(&tower_path("lava_btn")).await.unwrap(),
+        highlighted: load_texture(&tower_path("lava_btn_highlight")).await.unwrap(),
+        selected: load_texture(&tower_path("lava_btn_selected")).await.unwrap()
+      },
+    },
   }
 }
 
@@ -199,4 +281,39 @@ pub async fn load_levels(textures: &Textures) -> Level {
     .collect::<Vec<_>>();
 
   Level::new(lvl.width as usize, tiles)
+}
+
+#[derive(Deserialize, Debug)]
+struct SpawnSpan {
+  time: f32,
+  count: isize,
+}
+#[derive(Deserialize, Debug)]
+struct TowerSettings {
+  lava: Option<isize>,
+  block_up: Option<isize>,
+  block_down: Option<isize>,
+}
+
+#[derive(Deserialize, Debug)]
+struct TomlLevel {
+  enemies: Vec<SpawnSpan>,
+  towers: TowerSettings,
+}
+
+// fn main() {
+//   let eczn_toml = read_toml();
+//   match eczn_toml {
+//     Ok(val) => println!("读取成功:\n {:#?}", val),
+//     Err(e) => panic!("读取失败: {}", e),
+//   }
+// }
+
+fn read_toml(file_name: &str) -> Option<TomlLevel> {
+  let toml_str = read_to_string(level_path(file_name)).unwrap_or(String::new());
+  let cfg: Result<TomlLevel, Error> = toml::from_str(&toml_str);
+  if let Ok(lvl_config) = cfg {
+    return Some(lvl_config);
+  }
+  None
 }

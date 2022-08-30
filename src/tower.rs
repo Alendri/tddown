@@ -1,3 +1,4 @@
+use enum_map::Enum;
 use macroquad::{
   prelude::{is_mouse_button_released, vec2, MouseButton, PINK, RED, WHITE},
   texture::{draw_texture_ex, DrawTextureParams, Texture2D},
@@ -15,11 +16,12 @@ use crate::{
   wrld::World,
 };
 
-#[derive(Debug, PartialEq, Clone, Copy)]
+#[derive(Debug, PartialEq, Clone, Copy, Enum)]
 pub enum TowerType {
   BlockerDown,
   BlockerUp,
   Lava,
+  Collector,
 }
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub enum Dir {
@@ -50,6 +52,18 @@ impl FrameDrawing {
   pub fn is_end(&self) -> bool {
     self.frame >= self.count - 1
   }
+  pub fn step_time(&mut self) -> Texture2D {
+    self.timer -= get_frame_time();
+    if self.timer <= 0.0 {
+      self.reset_timer();
+      self.frame += 1;
+    }
+    self.frames[self.frame % self.count]
+  }
+  pub fn step(&mut self) -> Texture2D {
+    self.frame += 1;
+    self.frames[self.frame % self.count]
+  }
 }
 
 struct EffectSpawnData {
@@ -75,6 +89,7 @@ pub struct Tower {
   atlas: Option<FrameDrawing>,
   direction: Dir,
   spawn: Option<EffectSpawnData>,
+  count: usize,
 }
 
 impl Tower {
@@ -154,6 +169,7 @@ impl Tower {
         atlas: None,
         direction: Dir::Down,
         spawn: None,
+        count: 0,
       },
       TowerType::BlockerUp => Tower {
         grid_pos,
@@ -171,6 +187,7 @@ impl Tower {
         atlas: None,
         direction: Dir::Up,
         spawn: None,
+        count: 0,
       },
       TowerType::Lava => Tower {
         grid_pos,
@@ -192,7 +209,9 @@ impl Tower {
           timer: 0.0,
           time: 3.0,
         }),
+        count: 0,
       },
+      _ => panic!("Unimplemented tower type."),
     }
 
     //
@@ -282,6 +301,7 @@ impl Towers {
     match kind {
       TowerType::BlockerDown => Dir::Down,
       TowerType::BlockerUp => Dir::Up,
+      TowerType::Collector => Dir::Up,
       TowerType::Lava => Dir::Down,
     }
   }

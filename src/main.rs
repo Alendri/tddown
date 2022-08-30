@@ -7,6 +7,10 @@ use macroquad::prelude::*;
 use tower::Towers;
 use wrld::World;
 
+#[macro_use]
+extern crate enum_map;
+
+mod buildable;
 mod deb;
 mod effects;
 mod emath;
@@ -57,10 +61,6 @@ async fn main() {
     let mut effects_to_spawn: Vec<(EffectKind, (usize, usize))> = Vec::new();
     effects.retain_mut(|effect| {
       let ret = effect.update(&wrld);
-      // let ret = match effect {
-      //   Effects::LavaDrop(ef) => ef.update(&wrld),
-      //   Effects::LavaSplash(ef) => ef.update(&wrld),
-      // };
       if let Some(spawn) = ret.spawn {
         effects_to_spawn.push(spawn);
       }
@@ -72,7 +72,7 @@ async fn main() {
       spawn_effect(&mut effects, &wrld.textures, kind, pos);
     }
 
-    ui::draw(&wrld);
+    ui::draw(&mut wrld);
 
     draw_debug_texts(&deb_state, &wrld);
     next_frame().await

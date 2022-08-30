@@ -5,8 +5,8 @@ use crate::wrld::World;
 
 lazy_static! {
   pub static ref DEBUG: DebugSettings = DebugSettings {
-    zero_offset_initial_camera: true,
-    draw_rects: true,
+    // zero_offset_initial_camera: true,
+    // draw_rects: true,
     ..Default::default()
   };
 }

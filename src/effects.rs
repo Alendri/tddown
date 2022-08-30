@@ -2,7 +2,6 @@ use enum_dispatch::enum_dispatch;
 use macroquad::{
   prelude::{vec2, Vec2, RED, WHITE},
   texture::{draw_texture_ex, DrawTextureParams, Texture2D},
-  time::get_frame_time,
 };
 
 use crate::{
@@ -58,12 +57,7 @@ pub trait Effect {
 
   fn get_texture(&mut self) -> Texture2D {
     if let Some(atlas) = self.get_atlas() {
-      atlas.timer -= get_frame_time();
-      if atlas.timer <= 0.0 {
-        atlas.reset_timer();
-        atlas.frame += 1;
-      }
-      return atlas.frames[atlas.frame % atlas.count];
+      return atlas.step_time();
     }
     self.get_default_texture()
   }

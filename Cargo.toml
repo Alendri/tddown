@@ -10,3 +10,7 @@ rand = "0.8.5"
 macroquad = "0.3.23"
 lazy_static = "1.4.0"
 enum_dispatch = "0.3.8"
+toml = "0.5.9"
+serde = { version = "1.0.144", features = ["derive"] }
+# strum = { version = "0.24", features = ["derive"] }
+enum-map = "2.4.1"
