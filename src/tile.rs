@@ -34,6 +34,7 @@ pub enum TileType {
   TurretUp,
 }
 
+#[derive(Clone, Copy)]
 pub struct BaseTile {
   pub kind: TileType,
   pub texture: Texture2D,

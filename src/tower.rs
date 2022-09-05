@@ -1,4 +1,4 @@
-use enum_map::Enum;
+use enum_map::{Enum, EnumMap};
 use macroquad::{
   prelude::{is_mouse_button_released, vec2, MouseButton, PINK, RED, WHITE},
   texture::{draw_texture_ex, DrawTextureParams, Texture2D},
@@ -272,6 +272,7 @@ impl Collidable for Tower {
 
 pub struct Towers {
   towers: Vec<Option<Tower>>,
+  counts: EnumMap<TowerType, usize>,
 }
 impl Towers {
   pub fn new(wrld: &World) -> Towers {
@@ -279,6 +280,7 @@ impl Towers {
       towers: repeat_with(|| None)
         .take(wrld.tiles.len())
         .collect::<Vec<_>>(),
+      counts: enum_map! { _ => 0 },
     }
   }
   pub fn get_collided_tower(&self, other: &Rect) -> &Option<Tower> {
@@ -318,7 +320,18 @@ impl Towers {
       })
       .collect()
   }
-  pub fn update(&mut self, wrld: &World) {
+  pub fn get_tower_count(&self, kind: &TowerType) -> usize {
+    self.counts[*kind]
+    // self
+    //   .towers
+    //   .iter()
+    //   .filter(|t| match t {
+    //     Some(t) => t.kind == *kind,
+    //     _ => false,
+    //   })
+    //   .count()
+  }
+  pub fn update(&mut self, wrld: &mut World) {
     for tower in &mut self.towers {
       if let Some(t) = tower {
         t.draw(wrld);
@@ -340,6 +353,8 @@ impl Towers {
               _ => kind == &TileType::BuildDown,
             };
             if is_valid {
+              self.counts[selected_kind] += 1;
+              wrld.select_tower_kind(&self, &selected_kind);
               self.towers[tile_index] = Some(Tower::new(&wrld.textures, selected_kind, (*x, *y)));
             }
           }

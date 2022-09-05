@@ -36,7 +36,7 @@ fn window_conf() -> Conf {
 #[macroquad::main(window_conf)]
 async fn main() {
   let texs = load_textures().await;
-  let lvl = load_levels(&texs).await;
+  let lvls = load_levels(&texs).await;
 
   let deb_state = DebugSettings {
     zero_offset_initial_camera: true,
@@ -44,7 +44,7 @@ async fn main() {
     ..Default::default()
   };
   let mut effects: Vec<Effects> = Vec::new();
-  let mut wrld = World::new(lvl, texs);
+  let mut wrld = World::new(lvls.get_level(0), texs);
   let mut towers = Towers::new(&wrld);
   let mut enemies: Vec<Enemy> = Vec::new();
 
@@ -52,7 +52,7 @@ async fn main() {
     clear_background(BLACK);
 
     wrld.update(&mut enemies, &towers, &effects);
-    towers.update(&wrld);
+    towers.update(&mut wrld);
     let spawn_effects = towers.get_spawns(&wrld);
     for (kind, pos) in spawn_effects {
       spawn_effect(&mut effects, &wrld.textures, kind, pos);
@@ -72,7 +72,7 @@ async fn main() {
       spawn_effect(&mut effects, &wrld.textures, kind, pos);
     }
 
-    ui::draw(&mut wrld);
+    ui::draw(&mut wrld, &towers);
 
     draw_debug_texts(&deb_state, &wrld);
     next_frame().await

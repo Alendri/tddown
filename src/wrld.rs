@@ -23,25 +23,26 @@ const GRAVITY: f32 = 9.87;
 const BASE_MOVEMENT_SPEED: f32 = 300.0;
 
 pub struct World {
+  _scroll_pos: Vec2,
+  _zoom: f32,
+  gravity: f32,
   level: Level,
   mouse_grid: Option<(usize, usize)>,
   prev_mouse_pos: (f32, f32),
+  spawns: Vec<(usize, usize)>,
+
+  pub dt: f32,
+  pub frame: usize,
   pub grid_size: f32,
+  pub health: usize,
   pub mouse_pos: (f32, f32),
   pub scroll_pos: Vec2,
-  _scroll_pos: Vec2,
+  pub selected_tower_type: Option<TowerType>,
   pub sensitivity: f32,
+  pub speed: f32,
+  pub textures: Textures,
   pub tiles: Vec<Tile>,
   pub zoom: f32,
-  _zoom: f32,
-  spawns: Vec<(usize, usize)>,
-  pub textures: Textures,
-  gravity: f32,
-  pub frame: usize,
-  pub health: usize,
-  pub selected_tower_type: Option<TowerType>,
-  pub speed: f32,
-  pub dt: f32,
 }
 
 impl World {
@@ -79,8 +80,17 @@ impl World {
     }
   }
   pub fn set_level(&mut self, lvl: Level) {
+    self.health = lvl.health;
     self.tiles = lvl.tiles.iter().map(|bt| Tile::new(bt)).collect();
     self.level = lvl;
+    self.speed = 1.0;
+    self.selected_tower_type = None;
+  }
+  pub fn get_next_level_index(&self) -> u8 {
+    self.level.index + 1
+  }
+  pub fn get_lvl(&self) -> &Level {
+    &self.level
   }
 
   pub fn get_scaled_gravity(&self) -> f32 {
@@ -125,12 +135,20 @@ impl World {
     xy_to_i(&self.level.width, x, y)
   }
 
-  fn update_selected_tower_kind(&mut self) {
+  pub fn select_tower_kind(&mut self, towers: &Towers, kind: &TowerType) {
+    if towers.get_tower_count(kind) >= self.level.get_tower_supply(kind) {
+      self.selected_tower_type = None;
+      return;
+    }
+    self.selected_tower_type = Some(*kind);
+  }
+
+  fn update_selected_tower_kind(&mut self, towers: &Towers) {
     if let Some(key) = get_last_key_pressed() {
       match key {
-        KeyCode::Key1 => self.selected_tower_type = Some(TowerType::BlockerUp),
-        KeyCode::Key2 => self.selected_tower_type = Some(TowerType::BlockerDown),
-        KeyCode::Key3 => self.selected_tower_type = Some(TowerType::Lava),
+        KeyCode::Key1 => self.select_tower_kind(towers, &TowerType::BlockerUp),
+        KeyCode::Key2 => self.select_tower_kind(towers, &TowerType::BlockerDown),
+        KeyCode::Key3 => self.select_tower_kind(towers, &TowerType::Lava),
         KeyCode::Escape => self.selected_tower_type = None,
         _ => {}
       }
@@ -191,7 +209,7 @@ impl World {
 
     self.dt = get_frame_time() * self.speed;
 
-    self.update_selected_tower_kind();
+    self.update_selected_tower_kind(towers);
     self.update_mouse();
 
     //UPDATE GRAVITY

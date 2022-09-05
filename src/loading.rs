@@ -1,15 +1,15 @@
 use enum_map::EnumMap;
+use futures::future::join_all;
 use macroquad::{
   rand::RandomRange,
   texture::{load_image, load_texture, Texture2D},
 };
-use serde::Deserialize;
 use std::fs::read_to_string;
 use toml::{self, de::Error};
 
 use crate::{
   emath::i_to_xy,
-  level::Level,
+  level::{Level, LevelConfig, Levels},
   tile::{BaseTile, TileType},
   tower::TowerType,
 };
@@ -31,18 +31,6 @@ pub struct Textures {
   pub border_top_left: Texture2D,
   pub border_top_right: Texture2D,
   pub border_top: Texture2D,
-  // pub btn_blocker_down_highlight: Texture2D,
-  // pub btn_blocker_down_selected: Texture2D,
-  // pub btn_blocker_down: Texture2D,
-  // pub btn_blocker_up_highlight: Texture2D,
-  // pub btn_blocker_up_selected: Texture2D,
-  // pub btn_blocker_up: Texture2D,
-  // pub btn_collector_highlight: Texture2D,
-  // pub btn_collector_selected: Texture2D,
-  // pub btn_collector: Texture2D,
-  // pub btn_lava_highlight: Texture2D,
-  // pub btn_lava_selected: Texture2D,
-  // pub btn_lava: Texture2D,
   pub build_down: Texture2D,
   pub build_up: Texture2D,
   pub empty: Texture2D,
@@ -127,34 +115,6 @@ pub async fn load_textures() -> Textures {
     enemy: load_texture(&tex_path("enemy")).await.unwrap(),
 
     //UI
-    // btn_blocker_down_highlight: load_texture(&tower_path("blocker_down_btn_highlight"))
-    //   .await
-    //   .unwrap(),
-    // btn_blocker_down_selected: load_texture(&tower_path("blocker_down_btn_selected"))
-    //   .await
-    //   .unwrap(),
-    // btn_blocker_down: load_texture(&tower_path("blocker_down_btn")).await.unwrap(),
-    // btn_blocker_up_highlight: load_texture(&tower_path("blocker_up_btn_highlight"))
-    //   .await
-    //   .unwrap(),
-    // btn_blocker_up_selected: load_texture(&tower_path("blocker_up_btn_selected"))
-    //   .await
-    //   .unwrap(),
-    // btn_blocker_up: load_texture(&tower_path("blocker_up_btn")).await.unwrap(),
-    // btn_lava_highlight: load_texture(&tower_path("lava_btn_highlight"))
-    //   .await
-    //   .unwrap(),
-    // btn_lava_selected: load_texture(&tower_path("lava_btn_selected"))
-    //   .await
-    //   .unwrap(),
-    // btn_lava: load_texture(&tower_path("lava_btn")).await.unwrap(),
-    // btn_collector_highlight: load_texture(&tower_path("collector_btn_highlight"))
-    //   .await
-    //   .unwrap(),
-    // btn_collector_selected: load_texture(&tower_path("collector_btn_selected"))
-    //   .await
-    //   .unwrap(),
-    // btn_collector: load_texture(&tower_path("collector_btn")).await.unwrap(),
     tower_buttons: enum_map! {
       TowerType::BlockerDown => ButtonTexs {
         normal: load_texture(&tower_path("blocker_down_btn")).await.unwrap(),
@@ -180,140 +140,132 @@ pub async fn load_textures() -> Textures {
   }
 }
 
-pub async fn load_levels(textures: &Textures) -> Level {
-  let lvl = load_image(&format!("{}/levels/level1.png", ASSET_PATH))
-    .await
-    .unwrap();
+pub async fn load_levels(textures: &Textures) -> Levels {
+  let lvls = join_all(vec!["level1", "level2"].iter().map(|file_name| async {
+    let lvl_data = load_image(&level_path(&format!("{}.png", file_name.clone())))
+      .await
+      .unwrap();
 
-  println!("level w:{}, h:{}", lvl.width, lvl.height);
-  let mut i = 0;
-  let tiles = lvl
-    .get_image_data()
-    .iter()
-    .map(|p| {
-      let pos = i_to_xy(&(lvl.width as usize), &i);
-      let mut basetile = BaseTile {
-        kind: TileType::Empty,
-        texture: textures.empty,
-        grid_pos: pos,
-        index: i,
-        size: (1, 1),
-      };
-      match p {
-        [0, 0, 0, 255] => {
-          basetile.kind = TileType::BorderTopLeft;
-          basetile.texture = textures.border_top_left;
-        }
-        [30, 30, 30, 255] => {
-          basetile.kind = TileType::BorderTop;
-          basetile.texture = textures.border_top;
-        }
-        [60, 60, 60, 255] => {
-          basetile.kind = TileType::BorderTopRight;
-          basetile.texture = textures.border_top_right;
-        }
-        [90, 90, 90, 255] => {
-          basetile.kind = TileType::BorderRight;
-          basetile.texture = textures.border_right;
-        }
-        [120, 120, 120, 255] => {
-          basetile.kind = TileType::BorderBottomRight;
-          basetile.texture = textures.border_bottom_right;
-        }
-        [150, 150, 150, 255] => {
-          basetile.kind = TileType::BorderBottom;
-          basetile.texture = textures.border_bottom;
-        }
-        [180, 180, 180, 255] => {
-          basetile.kind = TileType::BorderBottomLeft;
-          basetile.texture = textures.border_bottom_left;
-        }
-        [210, 210, 210, 255] => {
-          basetile.kind = TileType::BorderLeft;
-          basetile.texture = textures.border_left;
-        }
-        [213, 0, 0, 255] => {
-          basetile.kind = TileType::Spawn;
-          basetile.texture = textures.spawn;
-        }
-        [113, 0, 0, 255] => {
-          basetile.kind = TileType::Goal;
-          basetile.texture = textures.goal;
-        }
-        [0, 200, 0, 255] => {
-          basetile.kind = TileType::TerrainUp;
-          basetile.texture = textures.terrain_up;
-        }
-        [0, 155, 0, 255] => {
-          basetile.kind = TileType::TerrainCenter;
-          basetile.texture = textures.terrain_center;
-        }
-        [0, 109, 0, 255] => {
-          basetile.kind = TileType::TerrainDown;
-          basetile.texture = textures.terrain_down;
-        }
-        [0, 0, 200, 255] => {
-          basetile.kind = TileType::BuildUp;
-          basetile.texture = textures.build_up;
-        }
-        [0, 0, 109, 255] => {
-          basetile.kind = TileType::BuildDown;
-          basetile.texture = textures.build_down;
-        }
-        _ => {
-          let r = RandomRange::gen_range(0, 7);
-          basetile.kind = TileType::Empty;
-          basetile.texture = match r {
-            1 => textures.bg_1,
-            2 => textures.bg_1,
-            3 => textures.bg_2,
-            4 => textures.bg_2,
-            5 => textures.bg_3,
-            _ => textures.bg_0,
-          };
-        }
-      };
+    println!("level w:{}, h:{}", lvl_data.width, lvl_data.height);
+    let mut i = 0;
+    let tiles = lvl_data
+      .get_image_data()
+      .iter()
+      .map(|p| {
+        let pos = i_to_xy(&(lvl_data.width as usize), &i);
+        let mut basetile = BaseTile {
+          kind: TileType::Empty,
+          texture: textures.empty,
+          grid_pos: pos,
+          index: i,
+          size: (1, 1),
+        };
+        match p {
+          [0, 0, 0, 255] => {
+            basetile.kind = TileType::BorderTopLeft;
+            basetile.texture = textures.border_top_left;
+          }
+          [30, 30, 30, 255] => {
+            basetile.kind = TileType::BorderTop;
+            basetile.texture = textures.border_top;
+          }
+          [60, 60, 60, 255] => {
+            basetile.kind = TileType::BorderTopRight;
+            basetile.texture = textures.border_top_right;
+          }
+          [90, 90, 90, 255] => {
+            basetile.kind = TileType::BorderRight;
+            basetile.texture = textures.border_right;
+          }
+          [120, 120, 120, 255] => {
+            basetile.kind = TileType::BorderBottomRight;
+            basetile.texture = textures.border_bottom_right;
+          }
+          [150, 150, 150, 255] => {
+            basetile.kind = TileType::BorderBottom;
+            basetile.texture = textures.border_bottom;
+          }
+          [180, 180, 180, 255] => {
+            basetile.kind = TileType::BorderBottomLeft;
+            basetile.texture = textures.border_bottom_left;
+          }
+          [210, 210, 210, 255] => {
+            basetile.kind = TileType::BorderLeft;
+            basetile.texture = textures.border_left;
+          }
+          [213, 0, 0, 255] => {
+            basetile.kind = TileType::Spawn;
+            basetile.texture = textures.spawn;
+          }
+          [113, 0, 0, 255] => {
+            basetile.kind = TileType::Goal;
+            basetile.texture = textures.goal;
+          }
+          [0, 200, 0, 255] => {
+            basetile.kind = TileType::TerrainUp;
+            basetile.texture = textures.terrain_up;
+          }
+          [0, 155, 0, 255] => {
+            basetile.kind = TileType::TerrainCenter;
+            basetile.texture = textures.terrain_center;
+          }
+          [0, 109, 0, 255] => {
+            basetile.kind = TileType::TerrainDown;
+            basetile.texture = textures.terrain_down;
+          }
+          [0, 0, 200, 255] => {
+            basetile.kind = TileType::BuildUp;
+            basetile.texture = textures.build_up;
+          }
+          [0, 0, 109, 255] => {
+            basetile.kind = TileType::BuildDown;
+            basetile.texture = textures.build_down;
+          }
+          _ => {
+            let r = RandomRange::gen_range(0, 7);
+            basetile.kind = TileType::Empty;
+            basetile.texture = match r {
+              1 => textures.bg_1,
+              2 => textures.bg_1,
+              3 => textures.bg_2,
+              4 => textures.bg_2,
+              5 => textures.bg_3,
+              _ => textures.bg_0,
+            };
+          }
+        };
 
-      i += 1;
+        i += 1;
 
-      basetile
-    })
-    .collect::<Vec<_>>();
+        basetile
+      })
+      .collect::<Vec<_>>();
+    let lvl_config = read_toml(file_name);
 
-  Level::new(lvl.width as usize, tiles)
+    // LevelConfig {
+    //   enemies: Vec::new(),
+    //   health: 100,
+    //   towers: TowerSettings {
+    //     block_down: Some(1),
+    //     block_up: Some(1),
+    //     lava: Some(1),
+    //   },
+    // }
+
+    Level::new(lvl_data.width as usize, tiles, lvl_config)
+  }))
+  .await;
+
+  Levels::new(lvls)
 }
 
-#[derive(Deserialize, Debug)]
-struct SpawnSpan {
-  time: f32,
-  count: isize,
-}
-#[derive(Deserialize, Debug)]
-struct TowerSettings {
-  lava: Option<isize>,
-  block_up: Option<isize>,
-  block_down: Option<isize>,
-}
-
-#[derive(Deserialize, Debug)]
-struct TomlLevel {
-  enemies: Vec<SpawnSpan>,
-  towers: TowerSettings,
-}
-
-// fn main() {
-//   let eczn_toml = read_toml();
-//   match eczn_toml {
-//     Ok(val) => println!("读取成功:\n {:#?}", val),
-//     Err(e) => panic!("读取失败: {}", e),
-//   }
-// }
-
-fn read_toml(file_name: &str) -> Option<TomlLevel> {
-  let toml_str = read_to_string(level_path(file_name)).unwrap_or(String::new());
-  let cfg: Result<TomlLevel, Error> = toml::from_str(&toml_str);
+fn read_toml(file_name: &str) -> LevelConfig {
+  let toml_str =
+    read_to_string(level_path(&format!("{}.toml", file_name))).unwrap_or(String::new());
+  let cfg: Result<LevelConfig, Error> = toml::from_str(&toml_str);
   if let Ok(lvl_config) = cfg {
-    return Some(lvl_config);
+    println!("cfg: {:?}", lvl_config);
+    return lvl_config;
   }
-  None
+  panic!("Could not read level config file! {:?}", cfg);
 }

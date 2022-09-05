@@ -1,0 +1,16 @@
+health = 50
+
+[towers]
+lava = 2
+block_up = 1
+block_down = 1
+
+[[enemies]]
+time = 10
+count = 10
+[[enemies]]
+time = 5
+count = 10
+[[enemies]]
+time = 10
+count = 5
