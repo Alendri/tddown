@@ -229,6 +229,10 @@ impl World {
       self.grid_size = 32.0 * self.zoom;
     }
 
+    if self.level.spawner.check_spawn(self.dt) {
+      enemies.push(spawn(&self))
+    }
+
     if is_key_released(KeyCode::Space) {
       enemies.push(spawn(&self))
     }

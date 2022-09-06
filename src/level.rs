@@ -3,15 +3,10 @@ use serde::Deserialize;
 
 use crate::{
   emath::grid_pos_to_pos,
+  spawner::{SpawnSpan, SpawnSpanSerialized, Spawner},
   tile::{BaseTile, TileType},
   tower::TowerType,
 };
-
-#[derive(Deserialize, Debug, Clone)]
-pub struct SpawnSpan {
-  pub time: f32,
-  pub count: isize,
-}
 
 #[derive(Deserialize, Debug, Clone)]
 pub struct TowerSettings {
@@ -23,7 +18,7 @@ pub struct TowerSettings {
 
 #[derive(Deserialize, Debug, Clone)]
 pub struct LevelConfig {
-  pub enemies: Vec<SpawnSpan>,
+  pub enemies: Vec<SpawnSpanSerialized>,
   pub health: Option<usize>,
   pub towers: TowerSettings,
 }
@@ -37,6 +32,7 @@ pub struct Level {
   pub health: usize,
   pub config: LevelConfig,
   pub twr_supply: EnumMap<TowerType, usize>,
+  pub spawner: Spawner,
 }
 
 impl Level {
@@ -47,6 +43,7 @@ impl Level {
       height: tiles.len() / width,
       tiles,
       twr_supply: Level::calc_tower_supply(&config),
+      spawner: Spawner::new(get_valid_spawn_spans(&config.enemies)),
       health: config.health.unwrap_or(100),
       config,
     }
@@ -91,6 +88,15 @@ impl Levels {
   pub fn get_level(&self, index: usize) -> Level {
     self.levels.get(index).unwrap_or(&self.levels[0]).clone()
   }
+}
+
+fn get_valid_spawn_spans(span_data: &Vec<SpawnSpanSerialized>) -> Vec<SpawnSpan> {
+  let mut spans = span_data.clone();
+  spans.retain(|s| s.count > 0 && s.time > 0.0);
+  spans
+    .iter_mut()
+    .map(|s| SpawnSpan::new(s.time, s.count as usize))
+    .collect()
 }
 
 fn as_usize(val: Option<isize>, default: usize) -> usize {

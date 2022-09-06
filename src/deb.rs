@@ -17,6 +17,7 @@ pub struct DebugSettings {
   pub state: bool,
   pub draw_rects: bool,
   pub zero_offset_initial_camera: bool,
+  pub spawns: bool,
 }
 impl Default for DebugSettings {
   fn default() -> Self {
@@ -24,6 +25,7 @@ impl Default for DebugSettings {
       draw_fps: true,
       mouse: true,
       state: true,
+      spawns: true,
       draw_rects: false,
       zero_offset_initial_camera: false,
     }
@@ -97,6 +99,19 @@ pub fn draw_debug_texts(deb_state: &DebugSettings, wrld: &World) {
       format!(
         "hp:{}  speed:x{}   selected type:{:?}",
         wrld.health, wrld.speed, wrld.selected_tower_type
+      ),
+    ));
+    y += 15.0;
+  }
+  if deb_state.spawns {
+    print(DebugPrintSettings::new(
+      10.0,
+      y,
+      format!(
+        "spaned:{}/{}  ({}/sec)",
+        wrld.get_lvl().spawner.get_spawned_count(),
+        wrld.get_lvl().spawner.get_total_to_spawn(),
+        wrld.get_lvl().spawner.get_spawns_per_second()
       ),
     ));
   }
